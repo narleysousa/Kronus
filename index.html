@@ -6,21 +6,11 @@
     <title>Kronus - Ponto Eletrônico</title>
     <meta name="description" content="Kronus - Gestão de Ponto Inteligente. Registre entradas e saídas, acompanhe banco de horas.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="./index.css">
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          var root = document.getElementById('root');
-          if (root && root.children.length === 0) {
-            root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif;background:#f8fafc;color:#1e293b;text-align:center"><div><h1 style="font-size:20px;margin-bottom:8px">Kronus</h1><p style="color:#64748b;margin-bottom:16px">O app não carregou. Use <strong>npm run dev</strong> e acesse <a href="http://localhost:3000">http://localhost:3000</a></p><button onclick="location.reload()" style="padding:12px 24px;background:#4f46e5;color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer">Recarregar</button></div></div>';
-          }
-        }, 2000);
-      });
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

@@ -19,6 +19,7 @@ import { DeleteUserPinModal } from './components/DeleteUserPinModal';
 import { PersonalCommitmentModal } from './components/PersonalCommitmentModal';
 import { MissedJustificationModal } from './components/MissedJustificationModal';
 import { VacationModal } from './components/VacationModal';
+import { ProductivityDashboard } from './components/ProductivityDashboard';
 
 type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history';
 
@@ -137,6 +138,7 @@ export default function App() {
   const [missedJustificationError, setMissedJustificationError] = useState('');
   const [relaxModalOpen, setRelaxModalOpen] = useState(false);
   const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [productivityModalOpen, setProductivityModalOpen] = useState(false);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -700,19 +702,28 @@ export default function App() {
         </div>
 
         {view === 'dashboard' && (
-          <DashboardHome
-            currentUser={currentUser}
-            lastClockInTime={lastClockInTime}
-            lastSessionDurationMs={lastSessionDurationMs}
-            lastWorkLogType={lastWorkLog?.type ?? null}
-            summaries={summaries}
-            bankOfHours={bankOfHours}
-            isClockedIn={isClockedIn}
-            onPunch={handlePunch}
-            onGoToHistory={() => setView('history')}
-            onOpenPersonalCommitment={openPersonalModal}
-            onOpenVacation={openVacationModal}
-          />
+          <>
+            <DashboardHome
+              currentUser={currentUser}
+              lastClockInTime={lastClockInTime}
+              lastSessionDurationMs={lastSessionDurationMs}
+              lastWorkLogType={lastWorkLog?.type ?? null}
+              summaries={summaries}
+              bankOfHours={bankOfHours}
+              isClockedIn={isClockedIn}
+              onPunch={handlePunch}
+              onGoToHistory={() => setView('history')}
+              onOpenPersonalCommitment={openPersonalModal}
+              onOpenVacation={openVacationModal}
+              onOpenProductivity={() => setProductivityModalOpen(true)}
+            />
+            {productivityModalOpen && (
+              <ProductivityDashboard
+                summaries={summaries}
+                onClose={() => setProductivityModalOpen(false)}
+              />
+            )}
+          </>
         )}
 
         {view === 'history' && (

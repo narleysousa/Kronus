@@ -15,6 +15,7 @@ interface DashboardHomeProps {
   onGoToHistory: () => void;
   onOpenPersonalCommitment: () => void;
   onOpenVacation: () => void;
+  onOpenProductivity: () => void;
 }
 
 export const DashboardHome: React.FC<DashboardHomeProps> = ({
@@ -29,6 +30,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   onGoToHistory,
   onOpenPersonalCommitment,
   onOpenVacation,
+  onOpenProductivity,
 }) => (
   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -107,9 +109,14 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <div>
           <div className="flex items-center justify-between mb-6">
             <h4 className="font-bold text-slate-800">Banco de Horas</h4>
-            <div className={`p-2 rounded-lg ${bankOfHours >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`} aria-hidden>
+            <button
+              type="button"
+              onClick={onOpenProductivity}
+              className={`p-2 rounded-lg transition-colors hover:opacity-90 ${bankOfHours >= 0 ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+              aria-label="Abrir dashboard de produtividade"
+            >
               <TrendingUp size={20} />
-            </div>
+            </button>
           </div>
           <div className="space-y-1">
             <span className={`text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
