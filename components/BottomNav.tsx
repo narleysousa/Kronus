@@ -1,11 +1,11 @@
 import React from 'react';
-import { BarChart3, History, ShieldCheck, LogOut } from 'lucide-react';
+import { BarChart3, History, ShieldCheck, LogOut, TrendingUp } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface BottomNavProps {
-  view: 'dashboard' | 'admin' | 'history';
+  view: 'dashboard' | 'admin' | 'history' | 'productivity';
   isAdmin: boolean;
-  onNavigate: (view: 'dashboard' | 'admin' | 'history') => void;
+  onNavigate: (view: 'dashboard' | 'admin' | 'history' | 'productivity') => void;
   onLogout: () => void;
 }
 
@@ -31,6 +31,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({ view, isAdmin, onNavigate,
       aria-current={view === 'history' ? 'page' : undefined}
     >
       <History size={24} />
+    </button>
+    <button
+      type="button"
+      onClick={() => onNavigate('productivity')}
+      className={`p-2 rounded-xl ${view === 'productivity' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}
+      aria-label="Banco de Horas (detalhes)"
+      aria-current={view === 'productivity' ? 'page' : undefined}
+    >
+      <TrendingUp size={24} />
     </button>
     {isAdmin && (
       <button

@@ -1,12 +1,12 @@
 import React from 'react';
-import { BarChart3, History, ShieldCheck, LogOut } from 'lucide-react';
+import { BarChart3, History, ShieldCheck, LogOut, TrendingUp } from 'lucide-react';
 import { KronusLogo } from '../constants';
 import { User, UserRole } from '../types';
 
 interface SidebarProps {
   currentUser: User | null;
-  view: 'dashboard' | 'admin' | 'history';
-  onNavigate: (view: 'dashboard' | 'admin' | 'history') => void;
+  view: 'dashboard' | 'admin' | 'history' | 'productivity';
+  onNavigate: (view: 'dashboard' | 'admin' | 'history' | 'productivity') => void;
   onLogout: () => void;
 }
 
@@ -35,6 +35,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, view, onNavigate,
       >
         <History size={20} aria-hidden />
         Meus Registros
+      </button>
+      <button
+        type="button"
+        onClick={() => onNavigate('productivity')}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all w-full text-left ${view === 'productivity' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}`}
+        aria-current={view === 'productivity' ? 'page' : undefined}
+      >
+        <TrendingUp size={20} aria-hidden />
+        Banco de Horas (detalhes)
       </button>
       {currentUser?.role === UserRole.ADMIN && (
         <button

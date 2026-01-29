@@ -23,6 +23,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
 ## GitHub Pages (publicar o app na web)
 
 1. No repositório no GitHub: **Settings** → **Pages**.
-2. Em **Build and deployment** → **Source**, escolha **GitHub Actions**.
-3. A cada push na branch `main`, o workflow faz o build e publica em:
+2. Em **Build and deployment** → **Source**, escolha **GitHub Actions** (não use "Deploy from a branch").
+3. A cada push na branch `main`, o workflow faz o build e publica a pasta `dist` em:
    **https://narleysousa.github.io/Kronus/**
+
+**Se o site mostrar erro ou 404 (index.tsx/index.css):** a origem do Pages está errada. Em **Settings → Pages → Source** use **GitHub Actions**. O site deve ser a pasta `dist` (build), não o código-fonte do repositório.

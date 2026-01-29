@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, TrendingUp, Calendar } from 'lucide-react';
+import { X, TrendingUp, Calendar, ArrowLeft } from 'lucide-react';
 import type { DaySummary } from '../types';
 
 const PERIODS: { id: string; label: string; days: number }[] = [
@@ -30,9 +30,11 @@ function cutoffString(daysAgo: number): string {
 interface ProductivityDashboardProps {
   summaries: DaySummary[];
   onClose: () => void;
+  /** Quando true, exibe como página (com botão Voltar) em vez de modal. */
+  embedded?: boolean;
 }
 
-export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ summaries, onClose }) => {
+export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ summaries, onClose, embedded }) => {
   const [selectedPeriodId, setSelectedPeriodId] = useState('30');
   const today = useMemo(() => todayString(), []);
   const selectedPeriod = PERIODS.find(p => p.id === selectedPeriodId) ?? PERIODS[3];
@@ -46,25 +48,33 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
     return { cutoff, daysInPeriod: daysInPeriod, accumulatedTotal: total };
   }, [summaries, selectedPeriod.days, today]);
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="productivity-title">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <TrendingUp size={24} aria-hidden />
-            </div>
-            <div>
-              <h2 id="productivity-title" className="text-xl font-bold text-slate-800">Dashboard de Produtividade</h2>
-              <p className="text-sm text-slate-500">Ganhos e perdas por dia e acumulados por período</p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="Fechar">
-            <X size={24} />
-          </button>
+  const header = (
+    <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+          <TrendingUp size={24} aria-hidden />
         </div>
+        <div>
+          <h2 id="productivity-title" className="text-xl font-bold text-slate-800">Dashboard de Produtividade</h2>
+          <p className="text-sm text-slate-500">Quando as horas foram contabilizadas no banco</p>
+        </div>
+      </div>
+      {embedded ? (
+        <button type="button" onClick={onClose} className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold transition-colors" aria-label="Voltar ao início">
+          <ArrowLeft size={20} />
+          Voltar ao Início
+        </button>
+      ) : (
+        <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="Fechar">
+          <X size={24} />
+        </button>
+      )}
+    </div>
+  );
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+  const content = (
+    <div className="p-6 overflow-y-auto flex-1 space-y-6">
+
           <section>
             <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Período</h3>
             <div className="flex flex-wrap gap-2">
@@ -132,7 +142,25 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
               </ul>
             )}
           </section>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          {header}
+          {content}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="productivity-title">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        {header}
+        {content}
       </div>
     </div>
   );

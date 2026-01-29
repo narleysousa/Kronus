@@ -32,6 +32,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verificar build (dist)
+        run: |
+          if [ ! -f dist/index.html ]; then echo "Erro: dist/index.html não foi gerado."; exit 1; fi
+          ls -la dist/
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

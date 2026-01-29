@@ -21,7 +21,7 @@ import { MissedJustificationModal } from './components/MissedJustificationModal'
 import { VacationModal } from './components/VacationModal';
 import { ProductivityDashboard } from './components/ProductivityDashboard';
 
-type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history';
+type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -744,6 +744,14 @@ export default function App() {
             onUpdateUser={updateUser}
             onUpdateLog={updateLog}
             onAddLog={addLog}
+          />
+        )}
+
+        {view === 'productivity' && (
+          <ProductivityDashboard
+            summaries={summaries}
+            onClose={() => setView('dashboard')}
+            embedded
           />
         )}
       </main>
