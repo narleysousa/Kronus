@@ -19,4 +19,3 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
    - `VITE_GEMINI_API_KEY=your_key` (recomendado) ou `GEMINI_API_KEY=your_key`
 3. Run the app:
    `npm run dev`
-teste
