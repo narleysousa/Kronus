@@ -138,7 +138,6 @@ export default function App() {
   const [missedJustificationError, setMissedJustificationError] = useState('');
   const [relaxModalOpen, setRelaxModalOpen] = useState(false);
   const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [productivityModalOpen, setProductivityModalOpen] = useState(false);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -715,14 +714,8 @@ export default function App() {
               onGoToHistory={() => setView('history')}
               onOpenPersonalCommitment={openPersonalModal}
               onOpenVacation={openVacationModal}
-              onOpenProductivity={() => setProductivityModalOpen(true)}
+              onOpenProductivity={() => setView('productivity')}
             />
-            {productivityModalOpen && (
-              <ProductivityDashboard
-                summaries={summaries}
-                onClose={() => setProductivityModalOpen(false)}
-              />
-            )}
           </>
         )}
 

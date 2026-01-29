@@ -27,4 +27,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
 3. A cada push na branch `main`, o workflow faz o build e publica a pasta `dist` em:
    **https://narleysousa.github.io/Kronus/**
 
-**Se o site mostrar erro ou 404 (index.tsx/index.css):** a origem do Pages está errada. Em **Settings → Pages → Source** use **GitHub Actions**. O site deve ser a pasta `dist` (build), não o código-fonte do repositório.
+**Se o site ficar em branco ou mostrar erro de MIME type / 404 (index.tsx ou index.css):**  
+A origem do Pages está errada. O GitHub está servindo o **código-fonte** (onde `.tsx` é enviado com MIME type errado). Corrija assim:
+
+1. No repositório: **Settings** → **Pages**.
+2. Em **Build and deployment** → **Source**, selecione **GitHub Actions** (não "Deploy from a branch").
+3. Salve e faça um novo push na `main`; o workflow publicará a pasta **dist** (build com `.js`), e o site volta a carregar.

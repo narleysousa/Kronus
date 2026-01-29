@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, History, ChevronRight, TrendingUp, Calendar } from 'lucide-react';
 import { User, DaySummary } from '../types';
-import { formatDurationMs } from '../utils/formatDuration';
+import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
 
 interface DashboardHomeProps {
   currentUser: User | null;
@@ -120,7 +120,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           </div>
           <div className="space-y-1">
             <span className={`text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {bankOfHours >= 0 ? '+' : ''}{bankOfHours.toFixed(1)}h
+              {bankOfHours >= 0 ? '+' : ''}{formatHoursToHms(bankOfHours)}
             </span>
             <p className="text-slate-400 text-sm font-medium">Acúmulo total no período</p>
           </div>
@@ -155,7 +155,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-black text-slate-800">{s.totalHours.toFixed(2)}h</p>
+                <p className="text-sm font-black text-slate-800">{formatHoursToHms(s.totalHours)}</p>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${s.isGoalMet ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                   {s.isGoalMet ? 'Meta OK' : 'Meta Baixa'}
                 </span>

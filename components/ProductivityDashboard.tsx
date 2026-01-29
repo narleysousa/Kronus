@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { X, TrendingUp, Calendar, ArrowLeft } from 'lucide-react';
 import type { DaySummary } from '../types';
+import { formatHoursToHms } from '../utils/formatDuration';
 
 const PERIODS: { id: string; label: string; days: number }[] = [
   { id: '1', label: '1 dia', days: 1 },
@@ -101,7 +102,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
               <h3 className="font-bold text-slate-800">Acumulado no período ({selectedPeriod.label})</h3>
             </div>
             <p className={`text-4xl font-black ${accumulatedTotal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {accumulatedTotal >= 0 ? '+' : ''}{accumulatedTotal.toFixed(1)}h
+              {accumulatedTotal >= 0 ? '+' : ''}{formatHoursToHms(accumulatedTotal)}
             </p>
             <p className="text-slate-500 text-sm mt-1">
               De {new Date(cutoff + 'T00:00:00').toLocaleDateString('pt-BR')} até {new Date(today + 'T00:00:00').toLocaleDateString('pt-BR')}
@@ -130,10 +131,10 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
                       </span>
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-slate-500">
-                          {s.totalHours.toFixed(1)}h / {s.expectedHours}h
+                          {formatHoursToHms(s.totalHours)} / {s.expectedHours}h
                         </span>
                         <span className={`font-bold tabular-nums ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {delta >= 0 ? '+' : ''}{delta.toFixed(1)}h
+                          {delta >= 0 ? '+' : ''}{formatHoursToHms(delta)}
                         </span>
                       </div>
                     </li>
