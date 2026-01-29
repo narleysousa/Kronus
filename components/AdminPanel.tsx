@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Users, Calendar, Edit2, Trash2, Check, Plus, X, Save } from 'lucide-react';
-import { User, UserRole, PunchLog, PunchType } from '../types';
+import React, { useMemo, useState } from 'react';
+import { ShieldCheck, Users, Calendar, Edit2, Trash2, Plus, X, Save, Clock, Eye, EyeOff } from 'lucide-react';
+import { User, UserRole, PunchLog, PunchType, VacationRange } from '../types';
 import { WEEK_DAYS } from '../constants';
 import { cpfDigits, formatCpfDisplay } from '../utils/cpfMask';
+import { computeBankOfHours } from '../utils/bankOfHours';
+import { formatHoursToHms } from '../utils/formatDuration';
 
 interface AdminPanelProps {
   currentUser: User | null;
   users: User[];
   logs: PunchLog[];
+  vacations?: Record<string, VacationRange[]>;
   onPromoteUser: (userId: string) => void;
+  onPromoteToMaster?: (userId: string) => void;
+  onDemoteToUser?: (userId: string) => void;
   onRequestDeleteUser: (user: User) => void;
   onConfirmDeleteLog: (id: string) => void;
   onUpdateUser: (userId: string, updates: Partial<User>) => void;
@@ -94,23 +99,45 @@ const createDefaultLogDraft = (): LogDraft => {
   };
 };
 
+/** Só o admin master pode editar horas de outros admins; admin normal só de usuários comuns. */
+const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
+  if (!currentUser || currentUser.role !== UserRole.ADMIN) return false;
+  if (currentUser.isMaster) return true;
+  return targetUser.role === UserRole.USER;
+};
+
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   currentUser,
   users,
   logs,
+  vacations = {},
   onPromoteUser,
+  onPromoteToMaster,
+  onDemoteToUser,
   onRequestDeleteUser,
   onConfirmDeleteLog,
   onUpdateUser,
   onUpdateLog,
   onAddLog,
 }) => {
+  const bankByUserId = useMemo(() => {
+    if (!currentUser?.isMaster) return {};
+    const map: Record<string, number> = {};
+    users.forEach(user => {
+      const userLogs = logs.filter(l => l.userId === user.id);
+      const userVacations = vacations[user.id] ?? [];
+      map[user.id] = computeBankOfHours(user, userLogs, userVacations);
+    });
+    return map;
+  }, [currentUser?.isMaster, users, logs, vacations]);
+
   const [editingUserLogs, setEditingUserLogs] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [userDrafts, setUserDrafts] = useState<Record<string, UserDraft>>({});
   const [logDrafts, setLogDrafts] = useState<Record<string, LogDraft>>({});
   const [newLogDrafts, setNewLogDrafts] = useState<Record<string, LogDraft>>({});
+  const [pinVisible, setPinVisible] = useState(false); // padrão: sempre ocultar
 
   const startEditUser = (user: User) => {
     setUserDrafts(prev => ({ ...prev, [user.id]: createUserDraft(user) }));
@@ -142,8 +169,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const saveUser = (user: User) => {
     const draft = userDrafts[user.id];
     if (!draft) return;
-    const pin = draft.pin.replace(/\D/g, '').slice(0, 4);
     const dailyHours = Number(draft.dailyHours);
+    const isMasterEditingMaster = currentUser?.isMaster;
+    const canChangeMasterPin = isMasterEditingMaster || !user.isMaster;
+    const pin = canChangeMasterPin ? draft.pin.replace(/\D/g, '').slice(0, 4) : user.pin;
     onUpdateUser(user.id, {
       name: draft.name.trim(),
       email: draft.email.trim(),
@@ -283,13 +312,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     {user.name.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 flex-wrap">
                       {user.name}
-                      {isUserAdmin && <Check size={16} className="text-indigo-500 bg-indigo-50 rounded-full p-0.5" aria-hidden />}
+                      {isMasterUser ? (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Administrador master">Master</span>
+                      ) : isUserAdmin ? (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" title="Administrador">ADM</span>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" title="Usuário padrão">Padrão</span>
+                      )}
                     </h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                       <span className="text-sm text-slate-500 flex items-center gap-1"><Users size={14} aria-hidden /> {user.position}</span>
                       <span className="text-sm text-slate-500 flex items-center gap-1"><Calendar size={14} aria-hidden /> {user.dailyHours}h/dia</span>
+                      {currentUser?.isMaster && typeof bankByUserId[user.id] === 'number' && (
+                        <span className={`text-sm font-medium flex items-center gap-1 ${bankByUserId[user.id] >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} title="Banco de horas">
+                          <Clock size={14} aria-hidden />
+                          Banco: {bankByUserId[user.id] >= 0 ? '+' : ''}{formatHoursToHms(bankByUserId[user.id])}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -309,30 +350,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <Edit2 size={16} aria-hidden />
                     {isEditingUser ? 'Fechar Edição' : 'Editar Usuário'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = editingUserLogs === user.id ? null : user.id;
-                      setEditingUserLogs(next);
-                      if (next) {
-                        setNewLogDrafts(prev => prev[user.id] ? prev : { ...prev, [user.id]: createDefaultLogDraft() });
-                      } else {
-                        setEditingLogId(null);
-                      }
-                    }}
-                    className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
-                  >
-                    <Edit2 size={16} aria-hidden />
-                    {editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}
-                  </button>
+                  {canManageLogsOf(currentUser, user) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = editingUserLogs === user.id ? null : user.id;
+                        setEditingUserLogs(next);
+                        if (next) {
+                          setNewLogDrafts(prev => prev[user.id] ? prev : { ...prev, [user.id]: createDefaultLogDraft() });
+                        } else {
+                          setEditingLogId(null);
+                        }
+                      }}
+                      className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
+                    >
+                      <Edit2 size={16} aria-hidden />
+                      {editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}
+                    </button>
+                  )}
+                  {/* ADM padrão ou Master: podem tornar usuário comum em ADM */}
                   {!isUserAdmin && (
                     <button
                       type="button"
                       onClick={() => onPromoteUser(user.id)}
                       className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-100 transition-all flex items-center gap-2"
+                      title="Tornar administrador (ADM padrão)"
                     >
                       <ShieldCheck size={16} aria-hidden />
                       Tornar ADM
+                    </button>
+                  )}
+                  {/* Somente ADM Master: pode tornar usuário comum ou ADM comum em Master */}
+                  {currentUser?.isMaster && onPromoteToMaster && user.id !== currentUser.id && !isMasterUser && (
+                    <button
+                      type="button"
+                      onClick={() => onPromoteToMaster(user.id)}
+                      className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-sm font-bold border border-amber-100 transition-all flex items-center gap-2"
+                      title="Conceder permissão de administrador master"
+                    >
+                      <ShieldCheck size={16} aria-hidden />
+                      Tornar ADM Master
+                    </button>
+                  )}
+                  {currentUser?.isMaster && onDemoteToUser && user.id !== currentUser.id && (isUserAdmin || isMasterUser) && (
+                    <button
+                      type="button"
+                      onClick={() => onDemoteToUser(user.id)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
+                      title="Rebaixar a usuário comum"
+                    >
+                      <Users size={16} aria-hidden />
+                      Rebaixar a usuário
                     </button>
                   )}
                   {currentUser?.isMaster && user.id !== currentUser.id && (
@@ -378,16 +446,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
-                      <input
-                        value={userPinDigits}
-                        onChange={(e) => updateUserDraft(user.id, { pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                        inputMode="numeric"
-                        maxLength={4}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
-                      />
-                    </div>
+                    {/* Só o ADM master pode ver ou alterar o PIN de outro master; usuários e ADMs comuns não veem o PIN do master */}
+                    {(isMasterUser && !currentUser?.isMaster) ? (
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
+                        <p className="text-sm text-slate-500 italic">Apenas o administrador master pode ver ou alterar o PIN de outro master.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type={pinVisible ? 'text' : 'password'}
+                            value={userPinDigits}
+                            onChange={(e) => updateUserDraft(user.id, { pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                            inputMode="numeric"
+                            maxLength={4}
+                            className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setPinVisible(v => !v)}
+                            className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+                            aria-label={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+                            title={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+                          >
+                            {pinVisible ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-slate-500 uppercase">Cargo</label>
                       <input

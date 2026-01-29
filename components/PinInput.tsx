@@ -1,4 +1,5 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const LENGTH = 4;
 
@@ -9,6 +10,7 @@ interface PinInputProps {
 }
 
 export const PinInput: React.FC<PinInputProps> = ({ value, onChange, 'aria-label': ariaLabel }) => {
+  const [visible, setVisible] = useState(false); // padrão: sempre ocultar
   const ref0 = useRef<HTMLInputElement>(null);
   const ref1 = useRef<HTMLInputElement>(null);
   const ref2 = useRef<HTMLInputElement>(null);
@@ -49,12 +51,12 @@ export const PinInput: React.FC<PinInputProps> = ({ value, onChange, 'aria-label
   }, [onChange]);
 
   return (
-    <div className="flex gap-3 justify-center" onPaste={handlePaste} role="group">
+    <div className="flex gap-3 justify-center items-center" onPaste={handlePaste} role="group">
       {Array.from({ length: LENGTH }, (_, i) => (
         <input
           key={i}
           ref={inputRefs[i]}
-          type="password"
+          type={visible ? 'text' : 'password'}
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={1}
@@ -66,6 +68,15 @@ export const PinInput: React.FC<PinInputProps> = ({ value, onChange, 'aria-label
           className="w-14 h-16 text-center text-3xl font-bold border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none bg-white shadow-sm transition-all"
         />
       ))}
+      <button
+        type="button"
+        onClick={() => setVisible(v => !v)}
+        className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+        aria-label={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
+        title={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
+      >
+        {visible ? <EyeOff size={22} aria-hidden /> : <Eye size={22} aria-hidden />}
+      </button>
     </div>
   );
 };

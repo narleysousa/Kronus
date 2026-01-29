@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import { KronusLogo, WEEK_DAYS } from '../constants';
 import { formatCpfDisplay } from '../utils/cpfMask';
 
@@ -14,6 +14,7 @@ interface RegisterViewProps {
 export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cpfError, onRemoveByCpf, removeByCpfMessage }) => {
   const [cpfRaw, setCpfRaw] = React.useState('');
   const [removeCpfRaw, setRemoveCpfRaw] = React.useState('');
+  const [pinVisible, setPinVisible] = React.useState(false); // padrão: sempre ocultar
   const displayCpf = formatCpfDisplay(cpfRaw);
   const displayRemoveCpf = formatCpfDisplay(removeCpfRaw);
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,11 +134,11 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
 
           <div className="md:col-span-2 space-y-4 pt-4 border-t border-slate-100">
             <label htmlFor="reg-pin" className="block text-center text-sm font-semibold text-slate-700">Defina seu PIN de Acesso (4 dígitos numéricos)</label>
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center gap-2">
               <input
                 id="reg-pin"
                 name="pin"
-                type="password"
+                type={pinVisible ? 'text' : 'password'}
                 inputMode="numeric"
                 pattern="[0-9]{4}"
                 maxLength={4}
@@ -146,6 +147,15 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
                 className="w-40 text-center text-3xl font-bold tracking-[0.5em] py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none bg-slate-50"
                 aria-describedby="reg-pin-hint"
               />
+              <button
+                type="button"
+                onClick={() => setPinVisible(v => !v)}
+                className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+                aria-label={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+                title={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+              >
+                {pinVisible ? <EyeOff size={22} aria-hidden /> : <Eye size={22} aria-hidden />}
+              </button>
             </div>
             <p id="reg-pin-hint" className="text-center text-slate-500 text-xs">Apenas números, 4 dígitos.</p>
           </div>

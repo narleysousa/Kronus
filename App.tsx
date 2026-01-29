@@ -120,6 +120,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
+  const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
   const [deleteUserPin, setDeleteUserPin] = useState('');
   const [deleteUserPinError, setDeleteUserPinError] = useState('');
@@ -140,6 +141,7 @@ export default function App() {
   const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionRestoredRef = useRef(false);
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
@@ -183,6 +185,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (sessionRestoredRef.current || safeUsers.length === 0) return;
+    const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+    if (!sessionId) return;
+    const user = safeUsers.find(u => u.id === sessionId);
+    sessionRestoredRef.current = true;
+    if (user) {
+      setCurrentUser(user);
+      setView('dashboard');
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+    }
+  }, [safeUsers]);
+
+  useEffect(() => {
     if (!firestoreLoadedRef.current) return;
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(() => {
@@ -212,6 +228,7 @@ export default function App() {
     if (!updated) {
       setCurrentUser(null);
       setView('login');
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
       return;
     }
     if (updated !== currentUser) {
@@ -345,6 +362,7 @@ export default function App() {
       } else {
         localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
       }
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, user.id);
       setCurrentUser(user);
       setView('dashboard');
       setPin('');
@@ -387,6 +405,7 @@ export default function App() {
     };
 
     setUsers(prev => [...prev, newUser]);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, newUser.id);
     setCurrentUser(newUser);
     setView('dashboard');
   };
@@ -575,11 +594,27 @@ export default function App() {
 
   const deleteLog = (id: string) => {
     setLogs(prev => prev.filter(l => l.id !== id));
+    confirmDeleteIdRef.current = null;
     setConfirmDelete(null);
+  };
+
+  const openConfirmDeleteLog = (id: string) => {
+    confirmDeleteIdRef.current = id;
+    setConfirmDelete({ id });
   };
 
   const promoteUser = (userId: string) => {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN } : u));
+  };
+
+  const promoteToMaster = (userId: string) => {
+    if (!currentUser?.isMaster) return;
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, isMaster: true } : u));
+  };
+
+  const demoteToUser = (userId: string) => {
+    if (!currentUser?.isMaster) return;
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.USER, isMaster: false } : u));
   };
 
   const deleteUser = (userId: string) => {
@@ -651,6 +686,7 @@ export default function App() {
         users={safeUsers}
         onBack={() => setView('login')}
         onSuccess={(userWithNewPin) => {
+          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, userWithNewPin.id);
           setCurrentUser(userWithNewPin);
           setView('dashboard');
         }}
@@ -679,14 +715,22 @@ export default function App() {
         currentUser={currentUser}
         view={view}
         onNavigate={(v) => setView(v)}
-        onLogout={() => { setCurrentUser(null); setView('login'); }}
+        onLogout={() => {
+          localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+          setCurrentUser(null);
+          setView('login');
+        }}
       />
 
       <BottomNav
         view={view}
         isAdmin={currentUser?.role === UserRole.ADMIN}
         onNavigate={(v) => setView(v)}
-        onLogout={() => { setCurrentUser(null); setView('login'); }}
+        onLogout={() => {
+          localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+          setCurrentUser(null);
+          setView('login');
+        }}
       />
 
       <main className="flex-grow p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
@@ -722,7 +766,7 @@ export default function App() {
         {view === 'history' && (
           <HistoryView
             userLogs={userLogs}
-            onConfirmDelete={(id, log) => setConfirmDelete({ id, log })}
+            onConfirmDelete={(id, log) => { confirmDeleteIdRef.current = id; setConfirmDelete({ id, log }); }}
           />
         )}
 
@@ -731,9 +775,12 @@ export default function App() {
             currentUser={currentUser}
             users={safeUsers}
             logs={safeLogs}
+            vacations={vacations}
             onPromoteUser={promoteUser}
+            onPromoteToMaster={currentUser?.isMaster ? promoteToMaster : undefined}
+            onDemoteToUser={currentUser?.isMaster ? demoteToUser : undefined}
             onRequestDeleteUser={handleRequestDeleteUser}
-            onConfirmDeleteLog={(id) => setConfirmDelete({ id })}
+            onConfirmDeleteLog={openConfirmDeleteLog}
             onUpdateUser={updateUser}
             onUpdateLog={updateLog}
             onAddLog={addLog}
@@ -756,8 +803,11 @@ export default function App() {
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         danger
-        onConfirm={() => confirmDelete && deleteLog(confirmDelete.id)}
-        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          const id = confirmDeleteIdRef.current ?? confirmDelete?.id;
+          if (id) deleteLog(id);
+        }}
+        onCancel={() => { confirmDeleteIdRef.current = null; setConfirmDelete(null); }}
       />
 
       <ConfirmModal

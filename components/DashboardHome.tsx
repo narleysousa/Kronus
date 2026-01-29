@@ -1,7 +1,18 @@
-import React from 'react';
-import { Clock, History, ChevronRight, TrendingUp, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Clock, History, ChevronRight, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
 import { User, DaySummary } from '../types';
+import { WEEK_DAYS, PUNCH_DEADLINE_HOUR } from '../constants';
 import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
+
+function todayDateString(): string {
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function todayWorkDayId(): string {
+  return WEEK_DAYS[new Date().getDay()].id;
+}
 
 interface DashboardHomeProps {
   currentUser: User | null;
@@ -31,7 +42,49 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   onOpenPersonalCommitment,
   onOpenVacation,
   onOpenProductivity,
-}) => (
+}) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  const todayStr = useMemo(() => todayDateString(), []);
+  const todaySummary = useMemo(() => summaries.find(s => s.date === todayStr), [summaries, todayStr]);
+  const todayWdId = useMemo(() => todayWorkDayId(), []);
+  const isTodayWorkDay = useMemo(
+    () => !!currentUser?.workDays.includes(todayWdId),
+    [currentUser?.workDays, todayWdId]
+  );
+  const hasPunchedInToday = useMemo(
+    () => (todaySummary?.logs?.some(l => l.type === 'IN' || l.type === 'OUT') ?? false),
+    [todaySummary?.logs]
+  );
+  const punchDeadlineMs = useMemo(() => {
+    const hour = String(PUNCH_DEADLINE_HOUR).padStart(2, '0');
+    return new Date(`${todayStr}T${hour}:00:00`).getTime();
+  }, [todayStr]);
+  const punchInCountdownMs = useMemo(() => {
+    if (!isTodayWorkDay || hasPunchedInToday || now >= punchDeadlineMs) return null;
+    return Math.max(0, punchDeadlineMs - now);
+  }, [isTodayWorkDay, hasPunchedInToday, now, punchDeadlineMs]);
+  const punchDeadlinePassed = useMemo(
+    () => isTodayWorkDay && !hasPunchedInToday && now >= punchDeadlineMs,
+    [isTodayWorkDay, hasPunchedInToday, now, punchDeadlineMs]
+  );
+
+  useEffect(() => {
+    if (!isClockedIn && !isTodayWorkDay) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [isClockedIn, isTodayWorkDay]);
+
+  const countdownRemainingMs = useMemo(() => {
+    if (!isClockedIn || !currentUser || !lastClockInTime) return null;
+    const todayHoursSoFar = (todaySummary?.totalHours ?? 0) + (now - lastClockInTime) / 3600000;
+    const goalSeconds = currentUser.dailyHours * 3600;
+    const workedSeconds = todayHoursSoFar * 3600;
+    const remaining = Math.max(0, Math.floor(goalSeconds - workedSeconds));
+    return remaining * 1000;
+  }, [isClockedIn, currentUser, lastClockInTime, todaySummary?.totalHours, now]);
+
+  return (
   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
@@ -77,6 +130,23 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 ? `Início do turno às ${lastClockInTime ? new Date(lastClockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}`
                 : 'Bata o ponto para iniciar sua jornada de hoje.'}
             </p>
+            {isClockedIn && countdownRemainingMs !== null && (
+              <p className="mt-3 text-red-400 font-bold text-xl tabular-nums" aria-live="polite">
+                Faltam {formatDurationMs(countdownRemainingMs)} para a meta
+              </p>
+            )}
+            {!isClockedIn && isTodayWorkDay && !hasPunchedInToday && (
+              punchInCountdownMs !== null ? (
+                <p className="mt-3 text-amber-200 font-bold text-xl tabular-nums" aria-live="polite">
+                  Faltam {formatDurationMs(punchInCountdownMs)} para bater o ponto (prazo: {PUNCH_DEADLINE_HOUR}h)
+                </p>
+              ) : punchDeadlinePassed ? (
+                <p className="mt-3 flex items-center gap-2 text-amber-200 font-bold">
+                  <AlertCircle size={20} aria-hidden />
+                  Prazo de 6h para bater o ponto já passou. Bata o ponto assim que puder.
+                </p>
+              ) : null
+            )}
           </div>
 
           <div className="flex flex-col items-center">
@@ -172,4 +242,5 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       </div>
     </section>
   </div>
-);
+  );
+};
