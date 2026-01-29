@@ -7,13 +7,24 @@ interface RegisterViewProps {
   onBack: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   cpfError?: string;
+  onRemoveByCpf?: (cpf: string) => void;
+  removeByCpfMessage?: { type: 'success' | 'error'; text: string } | null;
 }
 
-export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cpfError }) => {
+export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cpfError, onRemoveByCpf, removeByCpfMessage }) => {
   const [cpfRaw, setCpfRaw] = React.useState('');
+  const [removeCpfRaw, setRemoveCpfRaw] = React.useState('');
   const displayCpf = formatCpfDisplay(cpfRaw);
+  const displayRemoveCpf = formatCpfDisplay(removeCpfRaw);
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpfRaw(e.target.value.replace(/\D/g, '').slice(0, 11));
+  };
+  const handleRemoveCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRemoveCpfRaw(e.target.value.replace(/\D/g, '').slice(0, 11));
+  };
+  const handleRemoveByCpfClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onRemoveByCpf?.(removeCpfRaw);
   };
 
   return (
@@ -63,6 +74,40 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
             <input type="hidden" name="cpf" value={cpfRaw} />
             {cpfError && <p id="reg-cpf-error" className="text-sm text-rose-600" role="alert">{cpfError}</p>}
           </div>
+
+          {onRemoveByCpf && (
+            <div className="md:col-span-2 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <p className="text-sm font-medium text-slate-700">CPF já cadastrado? Remova seu cadastro anterior para se cadastrar novamente.</p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[140px]">
+                  <label htmlFor="reg-remove-cpf" className="sr-only">CPF para remover</label>
+                  <input
+                    id="reg-remove-cpf"
+                    type="text"
+                    placeholder="000.000.000-00"
+                    className="w-full px-4 py-2 rounded-lg border-2 border-slate-200 focus:border-indigo-500 focus:outline-none text-sm"
+                    value={displayRemoveCpf}
+                    onChange={handleRemoveCpfChange}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveByCpfClick}
+                  className="px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-100 focus:outline-none"
+                >
+                  Remover meu cadastro
+                </button>
+              </div>
+              {removeByCpfMessage && (
+                <p
+                  className={`text-sm ${removeByCpfMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}
+                  role="alert"
+                >
+                  {removeByCpfMessage.text}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <label htmlFor="reg-position" className="text-sm font-semibold text-slate-700">Cargo / Função</label>

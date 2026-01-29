@@ -144,6 +144,7 @@ export default function App() {
   } | null>(null);
   const [confirmCode, setConfirmCode] = useState('');
   const [confirmError, setConfirmError] = useState('');
+  const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -450,6 +451,38 @@ export default function App() {
     setView('register');
   };
 
+  const handleRemoveByCpf = (cpfInput: string): void => {
+    setRemoveByCpfMessage(null);
+    const normalized = cpfDigits(cpfInput);
+    if (normalized.length !== 11) {
+      setRemoveByCpfMessage({ type: 'error', text: 'Digite um CPF válido com 11 dígitos.' });
+      return;
+    }
+    const user = safeUsers.find(u => cpfDigits(u.cpf) === normalized);
+    if (!user) {
+      setRemoveByCpfMessage({ type: 'error', text: 'CPF não encontrado.' });
+      return;
+    }
+    setUsers(prev => prev.filter(u => u.id !== user.id));
+    setLogs(prev => prev.filter(l => l.userId !== user.id));
+    setPendingJustifications(prev => {
+      const next = { ...prev };
+      delete next[user.id];
+      return next;
+    });
+    setVacations(prev => {
+      const next = { ...prev };
+      delete next[user.id];
+      return next;
+    });
+    setRelaxNotice(prev => {
+      const next = { ...prev };
+      delete next[user.id];
+      return next;
+    });
+    setRemoveByCpfMessage({ type: 'success', text: 'Cadastro removido. Você já pode se cadastrar novamente com este CPF.' });
+  };
+
   const handlePunch = () => {
     if (!currentUser) return;
     const lastPunch = lastWorkLog;
@@ -691,9 +724,11 @@ export default function App() {
   if (view === 'register') {
     return (
       <RegisterView
-        onBack={() => { setView('login'); setRegisterError(''); }}
+        onBack={() => { setView('login'); setRegisterError(''); setRemoveByCpfMessage(null); }}
         onSubmit={handleRegister}
         cpfError={registerError || undefined}
+        onRemoveByCpf={handleRemoveByCpf}
+        removeByCpfMessage={removeByCpfMessage}
       />
     );
   }
