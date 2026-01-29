@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from './types';
-import { INITIAL_ADMIN_NAME, LOCAL_STORAGE_KEYS, KronusLogo } from './constants';
+import { LOCAL_STORAGE_KEYS, KronusLogo, MASTER_ADMIN_NAME } from './constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { generateCode, CODE_EXPIRY_MS, isCodeExpired } from './utils/code';
@@ -9,7 +9,7 @@ import { getKronusData, setKronusData } from './services/firestoreService';
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { ForgotPasswordView } from './components/ForgotPasswordView';
-import { TwoFactorModal } from './components/TwoFactorModal';
+import { ConfirmRegistrationView } from './components/ConfirmRegistrationView';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { DashboardHome } from './components/DashboardHome';
@@ -21,7 +21,7 @@ import { PersonalCommitmentModal } from './components/PersonalCommitmentModal';
 import { MissedJustificationModal } from './components/MissedJustificationModal';
 import { VacationModal } from './components/VacationModal';
 
-type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history';
+type AppView = 'login' | 'register' | 'forgot-password' | 'confirm-registration' | 'dashboard' | 'admin' | 'history';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -137,18 +137,31 @@ export default function App() {
   const [missedJustificationReason, setMissedJustificationReason] = useState('Esqueci');
   const [missedJustificationError, setMissedJustificationError] = useState('');
   const [relaxModalOpen, setRelaxModalOpen] = useState(false);
-  const [pending2FA, setPending2FA] = useState<{
+  const [pendingRegistration, setPendingRegistration] = useState<{
     user: User;
     code: string;
     expiresAt: number;
   } | null>(null);
-  const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [twoFactorError, setTwoFactorError] = useState('');
+  const [confirmCode, setConfirmCode] = useState('');
+  const [confirmError, setConfirmError] = useState('');
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
+
+  useEffect(() => {
+    const hasMaster = safeUsers.some(user => user.isMaster);
+    if (hasMaster) return;
+    const masterByName = safeUsers.find(
+      user => user.name.trim().toLowerCase() === MASTER_ADMIN_NAME.trim().toLowerCase()
+    );
+    if (!masterByName) return;
+    setUsers(prev => prev.map(user => user.id === masterByName.id
+      ? { ...user, isMaster: true, role: UserRole.ADMIN }
+      : user
+    ));
+  }, [safeUsers, setUsers]);
 
   useEffect(() => {
     if (!Array.isArray(users)) {
@@ -200,23 +213,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const adminExists = safeUsers.some(u => u.name === INITIAL_ADMIN_NAME);
-    if (!adminExists) {
-      const newAdmin: User = {
-        id: crypto.randomUUID(),
-        name: INITIAL_ADMIN_NAME,
-        email: 'narley@kronus.com',
-        cpf: '000.000.000-00',
-        pin: '1234',
-        role: UserRole.ADMIN,
-        position: 'CEO & Founder',
-        dailyHours: 8,
-        workDays: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'],
-        createdAt: Date.now()
-      };
-      setUsers(prev => [...prev, newAdmin]);
+    if (view === 'confirm-registration' && !pendingRegistration) {
+      setView('register');
     }
-  }, [safeUsers, setUsers]);
+  }, [view, pendingRegistration]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -352,62 +352,17 @@ export default function App() {
     const user = safeUsers.find(u => cpfDigits(u.cpf) === normalizedCpf && u.pin === pin);
     if (user) {
       setAuthError('');
-      const code = generateCode();
-      setPending2FA({
-        user,
-        code,
-        expiresAt: Date.now() + CODE_EXPIRY_MS,
-      });
-      setTwoFactorCode('');
-      setTwoFactorError('');
+      if (rememberMe) {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF, cpfDigits(loginCpf));
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
+      }
+      setCurrentUser(user);
+      setView('dashboard');
+      setPin('');
     } else {
       setAuthError('CPF ou PIN incorretos');
     }
-  };
-
-  const handle2FAConfirm = () => {
-    if (!pending2FA) return;
-    if (twoFactorCode.length !== 6) {
-      setTwoFactorError('Digite o código de 6 dígitos.');
-      return;
-    }
-    if (twoFactorCode !== pending2FA.code) {
-      setTwoFactorError('Código incorreto. Tente novamente.');
-      return;
-    }
-    if (isCodeExpired(pending2FA.expiresAt)) {
-      setTwoFactorError('Código expirado. Solicite um novo código.');
-      return;
-    }
-    if (rememberMe) {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF, cpfDigits(loginCpf));
-    } else {
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
-    }
-    setCurrentUser(pending2FA.user);
-    setView('dashboard');
-    setPin('');
-    setPending2FA(null);
-    setTwoFactorCode('');
-    setTwoFactorError('');
-  };
-
-  const handle2FAResend = () => {
-    if (!pending2FA) return;
-    const code = generateCode();
-    setPending2FA({
-      ...pending2FA,
-      code,
-      expiresAt: Date.now() + CODE_EXPIRY_MS,
-    });
-    setTwoFactorCode('');
-    setTwoFactorError('');
-  };
-
-  const handle2FACancel = () => {
-    setPending2FA(null);
-    setTwoFactorCode('');
-    setTwoFactorError('');
   };
 
   const handleUpdatePin = (userId: string, newPin: string) => {
@@ -427,6 +382,7 @@ export default function App() {
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
     const fullName = `${firstName} ${lastName}`.trim();
+    const isMasterAdmin = fullName.trim().toLowerCase() === MASTER_ADMIN_NAME.trim().toLowerCase();
 
     const newUser: User = {
       id: crypto.randomUUID(),
@@ -434,16 +390,64 @@ export default function App() {
       email: formData.get('email') as string,
       cpf: formatCpfDisplay(cpfRaw),
       pin: formData.get('pin') as string,
-      role: UserRole.USER,
+      role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
+      isMaster: isMasterAdmin,
       position: formData.get('position') as string,
       dailyHours: Number(formData.get('dailyHours')),
       workDays: formData.getAll('workDays') as string[],
       createdAt: Date.now(),
     };
 
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
+    const code = generateCode();
+    setPendingRegistration({
+      user: newUser,
+      code,
+      expiresAt: Date.now() + CODE_EXPIRY_MS,
+    });
+    setConfirmCode('');
+    setConfirmError('');
+    setView('confirm-registration');
+  };
+
+  const handleConfirmRegistration = () => {
+    if (!pendingRegistration) return;
+    if (confirmCode.length !== 6) {
+      setConfirmError('Digite o código de 6 dígitos.');
+      return;
+    }
+    if (confirmCode !== pendingRegistration.code) {
+      setConfirmError('Código incorreto. Tente novamente.');
+      return;
+    }
+    if (isCodeExpired(pendingRegistration.expiresAt)) {
+      setConfirmError('Código expirado. Solicite um novo código.');
+      return;
+    }
+    setUsers(prev => [...prev, pendingRegistration.user]);
+    setCurrentUser(pendingRegistration.user);
     setView('dashboard');
+    setPendingRegistration(null);
+    setConfirmCode('');
+    setConfirmError('');
+  };
+
+  const handleResendConfirmCode = () => {
+    if (!pendingRegistration) return;
+    const code = generateCode();
+    setPendingRegistration({
+      ...pendingRegistration,
+      code,
+      expiresAt: Date.now() + CODE_EXPIRY_MS,
+    });
+    setConfirmCode('');
+    setConfirmError('');
+  };
+
+  const handleCancelConfirmRegistration = () => {
+    setPendingRegistration(null);
+    setConfirmCode('');
+    setConfirmError('');
+    setView('register');
   };
 
   const handlePunch = () => {
@@ -611,13 +615,14 @@ export default function App() {
   };
 
   const handleRequestDeleteUser = (user: User) => {
+    if (!currentUser?.isMaster) return;
     setConfirmDeleteUser({ userId: user.id, userName: user.name });
     setDeleteUserPin('');
     setDeleteUserPinError('');
   };
 
   const handleConfirmDeleteUser = () => {
-    if (!confirmDeleteUser || !currentUser) return;
+    if (!confirmDeleteUser || !currentUser || !currentUser.isMaster) return;
     if (deleteUserPin !== currentUser.pin) {
       setDeleteUserPinError('PIN incorreto. Tente novamente.');
       return;
@@ -629,7 +634,13 @@ export default function App() {
   };
 
   const updateUser = (userId: string, updates: Partial<User>) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      if (u.isMaster) {
+        return { ...u, ...updates, role: UserRole.ADMIN, isMaster: true };
+      }
+      return { ...u, ...updates };
+    }));
   };
 
   const updateLog = (logId: string, updates: Partial<PunchLog>) => {
@@ -657,17 +668,6 @@ export default function App() {
           onGoToRegister={() => { setView('register'); setAuthError(''); setRegisterError(''); }}
           onForgotPassword={() => { setView('forgot-password'); setAuthError(''); }}
         />
-        <TwoFactorModal
-          open={!!pending2FA}
-          email={pending2FA?.user.email ?? ''}
-          code={twoFactorCode}
-          setCode={setTwoFactorCode}
-          demoCode={pending2FA?.code ?? ''}
-          error={twoFactorError}
-          onConfirm={handle2FAConfirm}
-          onResend={handle2FAResend}
-          onCancel={handle2FACancel}
-        />
       </>
     );
   }
@@ -694,6 +694,21 @@ export default function App() {
         onBack={() => { setView('login'); setRegisterError(''); }}
         onSubmit={handleRegister}
         cpfError={registerError || undefined}
+      />
+    );
+  }
+
+  if (view === 'confirm-registration' && pendingRegistration) {
+    return (
+      <ConfirmRegistrationView
+        email={pendingRegistration.user.email}
+        code={confirmCode}
+        setCode={setConfirmCode}
+        demoCode={pendingRegistration.code}
+        error={confirmError}
+        onConfirm={handleConfirmRegistration}
+        onResend={handleResendConfirmCode}
+        onCancel={handleCancelConfirmRegistration}
       />
     );
   }

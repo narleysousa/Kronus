@@ -33,7 +33,8 @@ export const WEEK_DAYS = [
   { id: 'Sab', label: 'Sábado' },
 ];
 
-export const INITIAL_ADMIN_NAME = "Narley Almeida de Sousa";
+/** Nome do usuário que, ao se cadastrar, vira automaticamente administrador master. */
+export const MASTER_ADMIN_NAME = 'Narley Almeida de Sousa';
 
 export const LOCAL_STORAGE_KEYS = {
   USERS: 'kronus_users',

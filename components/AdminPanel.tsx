@@ -267,6 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="grid grid-cols-1 gap-6">
         {users.map(user => {
           const isUserAdmin = user.role === UserRole.ADMIN;
+          const isMasterUser = !!user.isMaster;
           const userLogs = logs.filter(l => l.userId === user.id).sort((a, b) => b.timestamp - a.timestamp);
           const isEditingUser = editingUserId === user.id;
           const draft = isEditingUser ? (userDrafts[user.id] || createUserDraft(user)) : createUserDraft(user);
@@ -334,7 +335,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       Tornar ADM
                     </button>
                   )}
-                  {currentUser && user.id !== currentUser.id && (
+                  {currentUser?.isMaster && user.id !== currentUser.id && (
                     <button
                       type="button"
                       onClick={() => onRequestDeleteUser(user)}
@@ -412,11 +413,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <select
                         value={draft.role}
                         onChange={(e) => updateUserDraft(user.id, { role: e.target.value as UserRole })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        disabled={isMasterUser}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
                       >
                         <option value={UserRole.USER}>Usuário</option>
                         <option value={UserRole.ADMIN}>Administrador</option>
                       </select>
+                      {isMasterUser && (
+                        <p className="text-[11px] text-slate-400">Administrador master não pode ser rebaixado.</p>
+                      )}
                     </div>
                   </div>
 

@@ -11,6 +11,7 @@ export interface User {
   cpf: string;
   pin: string;
   role: UserRole;
+  isMaster?: boolean;
   position: string;
   dailyHours: number;
   workDays: string[]; // e.g. ["Mon", "Tue"...]
