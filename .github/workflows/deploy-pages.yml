@@ -35,7 +35,7 @@ jobs:
       - name: Verificar build (dist)
         run: |
           if [ ! -f dist/index.html ]; then echo "Erro: dist/index.html não foi gerado."; exit 1; fi
-          if grep -q 'index\.tsx' dist/index.html; then echo "Erro: dist/index.html ainda referencia index.tsx (build incorreto)."; exit 1; fi
+          if grep -q 'src="\./index\.tsx"' dist/index.html; then echo "Erro: build não substituiu o script de entrada (index.tsx)."; exit 1; fi
           ls -la dist/
 
       - name: Adicionar .nojekyll (evita Jekyll no Pages)
