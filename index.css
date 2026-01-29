@@ -1,0 +1,7 @@
+/* Kronus - estilos base */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
