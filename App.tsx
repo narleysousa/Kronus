@@ -3,13 +3,12 @@ import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from '
 import { LOCAL_STORAGE_KEYS, KronusLogo, MASTER_ADMIN_NAME } from './constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
-import { generateCode, CODE_EXPIRY_MS, isCodeExpired } from './utils/code';
+import { generateCode, CODE_EXPIRY_MS } from './utils/code';
 import { getKronusData, setKronusData } from './services/firestoreService';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { ForgotPasswordView } from './components/ForgotPasswordView';
-import { ConfirmRegistrationView } from './components/ConfirmRegistrationView';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { DashboardHome } from './components/DashboardHome';
@@ -21,7 +20,7 @@ import { PersonalCommitmentModal } from './components/PersonalCommitmentModal';
 import { MissedJustificationModal } from './components/MissedJustificationModal';
 import { VacationModal } from './components/VacationModal';
 
-type AppView = 'login' | 'register' | 'forgot-password' | 'confirm-registration' | 'dashboard' | 'admin' | 'history';
+type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -137,13 +136,6 @@ export default function App() {
   const [missedJustificationReason, setMissedJustificationReason] = useState('Esqueci');
   const [missedJustificationError, setMissedJustificationError] = useState('');
   const [relaxModalOpen, setRelaxModalOpen] = useState(false);
-  const [pendingRegistration, setPendingRegistration] = useState<{
-    user: User;
-    code: string;
-    expiresAt: number;
-  } | null>(null);
-  const [confirmCode, setConfirmCode] = useState('');
-  const [confirmError, setConfirmError] = useState('');
   const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -214,12 +206,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (view === 'confirm-registration' && !pendingRegistration) {
-      setView('register');
-    }
-  }, [view, pendingRegistration]);
-
-  useEffect(() => {
     if (!currentUser) return;
     const updated = safeUsers.find(u => u.id === currentUser.id);
     if (!updated) {
@@ -270,7 +256,7 @@ export default function App() {
     }, {} as Record<string, PunchLog[]>);
 
     return Object.entries(grouped).map(([date, dayLogs]) => {
-      const sorted = [...dayLogs].sort((a, b) => a.timestamp - b.timestamp);
+      const sorted = [...(dayLogs as PunchLog[])].sort((a, b) => a.timestamp - b.timestamp);
       if (isDateInVacation(date, userVacations)) {
         return {
           date,
@@ -399,56 +385,9 @@ export default function App() {
       createdAt: Date.now(),
     };
 
-    const code = generateCode();
-    setPendingRegistration({
-      user: newUser,
-      code,
-      expiresAt: Date.now() + CODE_EXPIRY_MS,
-    });
-    setConfirmCode('');
-    setConfirmError('');
-    setView('confirm-registration');
-  };
-
-  const handleConfirmRegistration = () => {
-    if (!pendingRegistration) return;
-    if (confirmCode.length !== 6) {
-      setConfirmError('Digite o código de 6 dígitos.');
-      return;
-    }
-    if (confirmCode !== pendingRegistration.code) {
-      setConfirmError('Código incorreto. Tente novamente.');
-      return;
-    }
-    if (isCodeExpired(pendingRegistration.expiresAt)) {
-      setConfirmError('Código expirado. Solicite um novo código.');
-      return;
-    }
-    setUsers(prev => [...prev, pendingRegistration.user]);
-    setCurrentUser(pendingRegistration.user);
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
     setView('dashboard');
-    setPendingRegistration(null);
-    setConfirmCode('');
-    setConfirmError('');
-  };
-
-  const handleResendConfirmCode = () => {
-    if (!pendingRegistration) return;
-    const code = generateCode();
-    setPendingRegistration({
-      ...pendingRegistration,
-      code,
-      expiresAt: Date.now() + CODE_EXPIRY_MS,
-    });
-    setConfirmCode('');
-    setConfirmError('');
-  };
-
-  const handleCancelConfirmRegistration = () => {
-    setPendingRegistration(null);
-    setConfirmCode('');
-    setConfirmError('');
-    setView('register');
   };
 
   const handleRemoveByCpf = (cpfInput: string): void => {
@@ -729,21 +668,6 @@ export default function App() {
         cpfError={registerError || undefined}
         onRemoveByCpf={handleRemoveByCpf}
         removeByCpfMessage={removeByCpfMessage}
-      />
-    );
-  }
-
-  if (view === 'confirm-registration' && pendingRegistration) {
-    return (
-      <ConfirmRegistrationView
-        email={pendingRegistration.user.email}
-        code={confirmCode}
-        setCode={setConfirmCode}
-        demoCode={pendingRegistration.code}
-        error={confirmError}
-        onConfirm={handleConfirmRegistration}
-        onResend={handleResendConfirmCode}
-        onCancel={handleCancelConfirmRegistration}
       />
     );
   }
