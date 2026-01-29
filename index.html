@@ -6,12 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kronus - Ponto Eletrônico</title>
     <meta name="description" content="Kronus - Gestão de Ponto Inteligente. Registre entradas e saídas, acompanhe banco de horas.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./index.css">
   </head>
   <body>
+    <div id="deploy-warning" style="display:none;position:fixed;inset:0;z-index:9999;background:#1e293b;color:#f8fafc;font-family:Inter,sans-serif;padding:2rem;overflow:auto;">
+      <div style="max-width:520px;margin:0 auto;padding:2rem 0;">
+        <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:1rem;">⚠️ O app não carregou</h1>
+        <p style="color:#94a3b8;margin-bottom:1rem;">O GitHub Pages está publicando o <strong>código-fonte</strong> em vez do <strong>build</strong>. Por isso o navegador não consegue executar o app (erro de MIME type / index.tsx).</p>
+        <p style="color:#94a3b8;margin-bottom:1.5rem;">Para corrigir:</p>
+        <ol style="color:#cbd5e1;margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;">
+          <li>No repositório no GitHub, vá em <strong>Settings</strong> → <strong>Pages</strong>.</li>
+          <li>Em <strong>Build and deployment</strong> → <strong>Source</strong>, selecione <strong>GitHub Actions</strong> (não use &quot;Deploy from a branch&quot;).</li>
+          <li>Salve. Faça um push na branch <code style="background:#334155;padding:2px 6px;border-radius:4px;">main</code> para o workflow publicar o build.</li>
+        </ol>
+        <p style="color:#64748b;font-size:0.875rem;">Depois disso, o site voltará a carregar em <strong>https://narleysousa.github.io/Kronus/</strong></p>
+      </div>
+    </div>
     <div id="root"></div>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="./index.tsx"></script>
+    <script>
+      (function(){
+        setTimeout(function(){
+          var w=document.getElementById('deploy-warning');
+          var r=document.getElementById('root');
+          var isSourcePage=document.querySelector('script[src*="index.tsx"]');
+          if(w&&r&&isSourcePage&&!r.innerHTML.trim()){w.style.display='block';}
+        },3500);
+      })();
+    </script>
   </body>
 </html>

@@ -4,8 +4,14 @@
 
 ---
 
-**⚠️ Site em branco ou erro "Failed to load module script" / MIME type no GitHub Pages?**  
-Vá em **Settings → Pages** do repositório e em **Source** selecione **GitHub Actions** (não "Deploy from a branch"). Depois faça um push na `main` para o workflow publicar o build correto.
+**⚠️ Site em branco ou erro "Failed to load module script" / MIME type no GitHub Pages?**
+
+A tela que mostra **Filial (Branch)** e **/ (raiz)** é a opção **"Deploy from a branch"**. Para o Kronus rodar, é preciso usar **GitHub Actions**:
+
+1. Em **Settings → Pages**, na seção **Build and deployment**, no **primeiro** menu (Source/Fonte) — **acima** da parte que mostra Filial e pasta — escolha **GitHub Actions** (não "Deploy from a branch").
+2. Salve. Depois faça um push na `main` (ou rode o workflow em Actions) para publicar o build.
+
+Guia detalhado: [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md)
 
 ---
 
