@@ -19,3 +19,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
    - `VITE_GEMINI_API_KEY=your_key` (recomendado) ou `GEMINI_API_KEY=your_key`
 3. Run the app:
    `npm run dev`
+
+## GitHub Pages (publicar o app na web)
+
+1. No repositório no GitHub: **Settings** → **Pages**.
+2. Em **Build and deployment** → **Source**, escolha **GitHub Actions**.
+3. A cada push na branch `main`, o workflow faz o build e publica em:
+   **https://narleysousa.github.io/Kronus/**
