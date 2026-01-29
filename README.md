@@ -2,6 +2,13 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
+---
+
+**⚠️ Site em branco ou erro "Failed to load module script" / MIME type no GitHub Pages?**  
+Vá em **Settings → Pages** do repositório e em **Source** selecione **GitHub Actions** (não "Deploy from a branch"). Depois faça um push na `main` para o workflow publicar o build correto.
+
+---
+
 # Run and deploy your AI Studio app
 
 This contains everything you need to run your app locally.

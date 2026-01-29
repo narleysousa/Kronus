@@ -75,13 +75,17 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     return () => clearInterval(t);
   }, [isClockedIn, isTodayWorkDay]);
 
-  const countdownRemainingMs = useMemo(() => {
-    if (!isClockedIn || !currentUser || !lastClockInTime) return null;
+  const { countdownRemainingMs, overtimeMs } = useMemo(() => {
+    if (!isClockedIn || !currentUser || !lastClockInTime) {
+      return { countdownRemainingMs: null as number | null, overtimeMs: null as number | null };
+    }
     const todayHoursSoFar = (todaySummary?.totalHours ?? 0) + (now - lastClockInTime) / 3600000;
     const goalSeconds = currentUser.dailyHours * 3600;
     const workedSeconds = todayHoursSoFar * 3600;
     const remaining = Math.max(0, Math.floor(goalSeconds - workedSeconds));
-    return remaining * 1000;
+    const countdownRemainingMs = remaining * 1000;
+    const overtimeMs = workedSeconds >= goalSeconds ? Math.floor(workedSeconds - goalSeconds) * 1000 : null;
+    return { countdownRemainingMs, overtimeMs };
   }, [isClockedIn, currentUser, lastClockInTime, todaySummary?.totalHours, now]);
 
   return (
@@ -130,9 +134,14 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 ? `Início do turno às ${lastClockInTime ? new Date(lastClockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}`
                 : 'Bata o ponto para iniciar sua jornada de hoje.'}
             </p>
-            {isClockedIn && countdownRemainingMs !== null && (
+            {isClockedIn && countdownRemainingMs !== null && overtimeMs === null && countdownRemainingMs > 0 && (
               <p className="mt-3 text-red-400 font-bold text-xl tabular-nums" aria-live="polite">
                 Faltam {formatDurationMs(countdownRemainingMs)} para a meta
+              </p>
+            )}
+            {isClockedIn && overtimeMs !== null && (
+              <p className="mt-3 text-emerald-300 font-bold text-xl tabular-nums" aria-live="polite">
+                Horas extras: +{formatDurationMs(overtimeMs)}
               </p>
             )}
             {!isClockedIn && isTodayWorkDay && !hasPunchedInToday && (
