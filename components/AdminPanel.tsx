@@ -99,9 +99,10 @@ const createDefaultLogDraft = (): LogDraft => {
   };
 };
 
-/** Só o admin master pode editar horas de outros admins; admin normal só de usuários comuns. */
+/** ADM pode sempre editar as próprias horas; master pode editar de todos; ADM comum só de usuários comuns. */
 const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
   if (!currentUser || currentUser.role !== UserRole.ADMIN) return false;
+  if (targetUser.id === currentUser.id) return true; // adm pode editar suas próprias horas
   if (currentUser.isMaster) return true;
   return targetUser.role === UserRole.USER;
 };
