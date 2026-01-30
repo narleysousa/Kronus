@@ -176,9 +176,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const draft = userDrafts[user.id];
     if (!draft) return;
     const dailyHours = Number(draft.dailyHours);
-    const isMasterEditingMaster = currentUser?.isMaster;
-    const canChangeMasterPin = isMasterEditingMaster || !user.isMaster;
-    const pin = canChangeMasterPin ? draft.pin.replace(/\D/g, '').slice(0, 4) : user.pin;
+    const canEditOwnPin = currentUser?.id === user.id;
+    const canChangeMasterPin = currentUser?.isMaster || !user.isMaster;
+    const pin = canEditOwnPin && canChangeMasterPin ? draft.pin.replace(/\D/g, '').slice(0, 4) : user.pin;
     onUpdateUser(user.id, {
       name: draft.name.trim(),
       email: draft.email.trim(),
@@ -313,6 +313,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const canSaveUser = draft.name.trim() && draft.email.trim() && draft.position.trim() && userPinDigits.length === 4 && draft.dailyHours.trim();
           const newLogDraft = newLogDrafts[user.id] || createDefaultLogDraft();
           const canEditUser = !user.isMaster || currentUser?.isMaster;
+          const canEditOwnPin = currentUser?.id === user.id;
 
           return (
             <article key={user.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:border-indigo-100 transition-all">
@@ -458,11 +459,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
-                    {/* Só o ADM master pode ver ou alterar o PIN de outro master; usuários e ADMs comuns não veem o PIN do master */}
-                    {(isMasterUser && !currentUser?.isMaster) ? (
+                    {/* PIN só pode ser alterado pelo próprio usuário */}
+                    {!canEditOwnPin ? (
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
-                        <p className="text-sm text-slate-500 italic">Apenas o administrador master pode ver ou alterar o PIN de outro master.</p>
+                        <p className="text-sm text-slate-500 italic">O PIN só pode ser alterado pelo próprio usuário (via recuperação de senha).</p>
                       </div>
                     ) : (
                       <div className="space-y-2">

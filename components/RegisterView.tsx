@@ -71,7 +71,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="reg-email" className="text-sm font-semibold text-slate-700">E-mail de Recuperação</label>
+            <label htmlFor="reg-email" className="text-sm font-semibold text-slate-700">E-mail</label>
             <input id="reg-email" name="email" type="email" required className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none" />
           </div>
 
@@ -185,8 +185,11 @@ export const RegisterView: React.FC<RegisterViewProps> = ({
 
           <div className="md:col-span-2 pt-6">
             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all">
-              Finalizar Cadastro e Entrar
+              Finalizar Cadastro
             </button>
+            <p className="mt-2 text-center text-xs text-slate-500">
+              Você precisará confirmar seu e-mail para acessar a plataforma.
+            </p>
           </div>
 
           {formError && (

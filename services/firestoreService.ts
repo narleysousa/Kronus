@@ -53,7 +53,14 @@ const normalizeUsers = (users: User[]): User[] => users.map(user => {
   const isMaster = !!user.isMaster;
   const role = isMaster ? UserRole.ADMIN : (user.role ?? UserRole.USER);
   const updatedAt = user.updatedAt ?? user.createdAt ?? Date.now();
-  return { ...user, isMaster, role, updatedAt };
+  const emailVerified = user.emailVerified ?? false;
+  return {
+    ...user,
+    isMaster,
+    role,
+    updatedAt,
+    emailVerified,
+  };
 });
 
 const normalizeLogs = (logs: PunchLog[]): PunchLog[] => logs.map(log => ({

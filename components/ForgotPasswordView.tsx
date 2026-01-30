@@ -11,7 +11,7 @@ interface ForgotPasswordViewProps {
   users: User[];
   onBack: () => void;
   onSuccess: (userWithNewPin: User) => void;
-  onUpdatePin: (userId: string, newPin: string) => void;
+  onUpdatePin: (user: User, newPin: string) => void;
   generateCode: () => string;
   codeExpiryMs: number;
 }
@@ -103,7 +103,7 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
       setError('Os PINs não coincidem.');
       return;
     }
-    onUpdatePin(user.id, pin);
+    onUpdatePin(user, pin);
     onSuccess({ ...user, pin });
   };
 

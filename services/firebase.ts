@@ -1,5 +1,15 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  updatePassword,
+  reload,
+  signOut,
+  type Auth,
+  type User as FirebaseUser,
+} from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -15,7 +25,6 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
-let authPromise: Promise<boolean> | null = null;
 
 const FIRESTORE_ENABLED = (import.meta.env.VITE_FIRESTORE_ENABLED ?? 'true') !== 'false';
 
@@ -41,20 +50,15 @@ export function isFirestoreEnabled(): boolean {
 
 export async function ensureFirebaseAuth(): Promise<boolean> {
   if (!isFirestoreEnabled()) return false;
-  if (authPromise) return authPromise;
-  authPromise = (async () => {
-    try {
-      const firebaseAuth = getFirebaseAuth();
-      if (firebaseAuth.currentUser) return true;
-      await signInAnonymously(firebaseAuth);
-      return true;
-    } catch (error) {
-      console.warn('Firebase auth unavailable:', error);
-      authPromise = null;
-      return false;
-    }
-  })();
-  return authPromise;
+  try {
+    const firebaseAuth = getFirebaseAuth();
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) return false;
+    return !!currentUser.emailVerified;
+  } catch (error) {
+    console.warn('Firebase auth unavailable:', error);
+    return false;
+  }
 }
 
 export function getFirebaseDb(): Firestore {
@@ -62,6 +66,36 @@ export function getFirebaseDb(): Firestore {
     db = getFirestore(getFirebaseApp());
   }
   return db;
+}
+
+export function getFirebaseCurrentUser(): FirebaseUser | null {
+  return getFirebaseAuth().currentUser;
+}
+
+export async function createFirebaseUser(email: string, password: string): Promise<FirebaseUser> {
+  const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+  return result.user;
+}
+
+export async function signInFirebaseUser(email: string, password: string): Promise<FirebaseUser> {
+  const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+  return result.user;
+}
+
+export async function sendFirebaseVerificationEmail(user: FirebaseUser): Promise<void> {
+  await sendEmailVerification(user);
+}
+
+export async function reloadFirebaseUser(user: FirebaseUser): Promise<void> {
+  await reload(user);
+}
+
+export async function updateFirebasePassword(user: FirebaseUser, newPassword: string): Promise<void> {
+  await updatePassword(user, newPassword);
+}
+
+export async function signOutFirebase(): Promise<void> {
+  await signOut(getFirebaseAuth());
 }
 
 export { firebaseConfig };

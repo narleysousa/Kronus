@@ -12,6 +12,7 @@ export interface User {
   pin: string;
   role: UserRole;
   isMaster?: boolean;
+  emailVerified?: boolean;
   position: string;
   dailyHours: number;
   workDays: string[]; // e.g. ["Mon", "Tue"...]

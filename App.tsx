@@ -3,13 +3,22 @@ import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from '
 import { LOCAL_STORAGE_KEYS, KronusLogo } from './constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
-import { maskEmail } from './utils/emailMask';
 import { generateCode, CODE_EXPIRY_MS } from './utils/code';
+import { buildAuthPassword } from './utils/authPassword';
 import { getKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
-import { sendRegistrationConfirmationEmail } from './services/emailService';
+import {
+  createFirebaseUser,
+  signInFirebaseUser,
+  sendFirebaseVerificationEmail,
+  reloadFirebaseUser,
+  getFirebaseCurrentUser,
+  updateFirebasePassword,
+  signOutFirebase,
+} from './services/firebase';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
+import { VerifyEmailView } from './components/VerifyEmailView';
 import { ForgotPasswordView } from './components/ForgotPasswordView';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
@@ -23,7 +32,7 @@ import { MissedJustificationModal } from './components/MissedJustificationModal'
 import { VacationModal } from './components/VacationModal';
 import { ProductivityDashboard } from './components/ProductivityDashboard';
 
-type AppView = 'login' | 'register' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity';
+type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -122,6 +131,10 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [registerFormError, setRegisterFormError] = useState('');
+  const [verifyEmailUserId, setVerifyEmailUserId] = useState<string | null>(null);
+  const [verifyEmailAddress, setVerifyEmailAddress] = useState('');
+  const [verifyEmailError, setVerifyEmailError] = useState('');
+  const [verifyEmailNotice, setVerifyEmailNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
   const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
@@ -191,14 +204,55 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!currentUser?.emailVerified) return;
+    let mounted = true;
+    getKronusData().then((data) => {
+      if (!mounted || !data) return;
+      const merged = mergeKronusData(
+        {
+          users: safeUsers,
+          logs: safeLogs,
+          pendingJustifications,
+          vacations,
+          relaxNotice,
+        },
+        data
+      );
+      setUsers(merged.users);
+      setLogs(merged.logs);
+      setPendingJustifications(merged.pendingJustifications);
+      setVacations(merged.vacations);
+      setRelaxNotice(merged.relaxNotice);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser?.id, currentUser?.emailVerified]);
+
+  useEffect(() => {
     if (sessionRestoredRef.current || safeUsers.length === 0) return;
     const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
     if (!sessionId) return;
     const user = safeUsers.find(u => u.id === sessionId);
     sessionRestoredRef.current = true;
     if (user) {
-      setCurrentUser(user);
-      setView('dashboard');
+      const firebaseUser = getFirebaseCurrentUser();
+      if (firebaseUser && firebaseUser.emailVerified && firebaseUser.email?.toLowerCase() === user.email.toLowerCase()) {
+        setLocalEmailVerified(user.id, true);
+        setCurrentUser({ ...user, emailVerified: true });
+        setView('dashboard');
+      } else if (firebaseUser && !firebaseUser.emailVerified) {
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+        setCurrentUser(null);
+        setLocalEmailVerified(user.id, false);
+        openVerifyEmailView(user.id, user.email);
+        setVerifyEmailNotice({
+          type: 'error',
+          text: 'Seu e-mail ainda não foi verificado. Confirme para continuar.',
+        });
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+      }
     } else {
       localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
     }
@@ -243,16 +297,56 @@ export default function App() {
     }
   }, [safeUsers, currentUser]);
 
-  useEffect(() => {
-    if (view === 'dashboard' && registerEmailNotice?.text?.includes('não configurado')) {
-      setRegisterEmailNotice(null);
-    }
-  }, [view, registerEmailNotice?.text]);
-
   const userLogs = useMemo(() => {
     if (!currentUser) return [];
     return safeLogs.filter(l => l.userId === currentUser.id).sort((a, b) => b.timestamp - a.timestamp);
   }, [safeLogs, currentUser]);
+
+  const setLocalEmailVerified = (userId: string, verified: boolean) => {
+    setUsers(prev => prev.map(u => (
+      u.id === userId ? { ...u, emailVerified: verified, updatedAt: Date.now() } : u
+    )));
+  };
+
+  const openVerifyEmailView = (userId: string | null, email: string) => {
+    setVerifyEmailUserId(userId);
+    setVerifyEmailAddress(email);
+    setVerifyEmailError('');
+    setVerifyEmailNotice(null);
+    setView('verify-email');
+  };
+
+  const sendVerificationEmail = async () => {
+    setVerifyEmailNotice(null);
+    const firebaseUser = getFirebaseCurrentUser();
+    if (!firebaseUser) {
+      setVerifyEmailNotice({
+        type: 'error',
+        text: 'Sessão expirada. Faça login novamente para reenviar o e-mail.',
+      });
+      return;
+    }
+    const targetUser = verifyEmailUserId ? safeUsers.find(u => u.id === verifyEmailUserId) : null;
+    if (targetUser && firebaseUser.email?.toLowerCase() !== targetUser.email.toLowerCase()) {
+      setVerifyEmailNotice({
+        type: 'error',
+        text: 'Sessão não corresponde ao e-mail cadastrado. Faça login novamente.',
+      });
+      return;
+    }
+    try {
+      await sendFirebaseVerificationEmail(firebaseUser);
+      setVerifyEmailNotice({
+        type: 'success',
+        text: 'E-mail de confirmação enviado. Verifique sua caixa de entrada.',
+      });
+    } catch {
+      setVerifyEmailNotice({
+        type: 'error',
+        text: 'Não foi possível enviar o e-mail de confirmação.',
+      });
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -365,27 +459,106 @@ export default function App() {
     return lastOutDurationMs;
   }, [userLogs, userVacations]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const normalizedEmail = loginEmail.trim().toLowerCase();
-    const user = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail && u.pin === pin);
-    if (user) {
-      setAuthError('');
-      if (rememberMe) {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL, loginEmail.trim());
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
-      }
-      localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, user.id);
-      setCurrentUser(user);
-      setView('dashboard');
-      setPin('');
+    const localUser = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail);
+    const localPinMatches = !!localUser && localUser.pin === pin;
+
+    if (rememberMe) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL, loginEmail.trim());
     } else {
-      setAuthError('E-mail ou PIN incorretos');
+      localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
     }
+
+    const password = buildAuthPassword(pin);
+    let firebaseUser;
+    try {
+      firebaseUser = await signInFirebaseUser(normalizedEmail, password);
+    } catch (error: any) {
+      const code = error?.code as string | undefined;
+      if (code === 'auth/user-not-found') {
+        try {
+          firebaseUser = await createFirebaseUser(normalizedEmail, password);
+        } catch {
+          setAuthError('Não foi possível criar a conta de autenticação.');
+          return;
+        }
+      } else if (code === 'auth/operation-not-allowed') {
+        setAuthError('Habilite o provedor Email/Password no Firebase Auth.');
+        return;
+      } else if (code === 'auth/wrong-password') {
+        setAuthError('E-mail ou PIN incorretos');
+        return;
+      } else {
+        setAuthError('Não foi possível autenticar. Tente novamente.');
+        return;
+      }
+    }
+
+    if (!firebaseUser.emailVerified) {
+      if (localUser) {
+        setLocalEmailVerified(localUser.id, false);
+        openVerifyEmailView(localUser.id, localUser.email);
+      } else {
+        openVerifyEmailView(null, normalizedEmail);
+      }
+      setPin('');
+      await sendVerificationEmail();
+      return;
+    }
+
+    setAuthError('');
+    let userToLogin = localUser;
+    if (!userToLogin || !localPinMatches) {
+      const data = await getKronusData();
+      if (data) {
+        const merged = mergeKronusData(
+          {
+            users: safeUsers,
+            logs: safeLogs,
+            pendingJustifications,
+            vacations,
+            relaxNotice,
+          },
+          data
+        );
+        setUsers(merged.users);
+        setLogs(merged.logs);
+        setPendingJustifications(merged.pendingJustifications);
+        setVacations(merged.vacations);
+        setRelaxNotice(merged.relaxNotice);
+        userToLogin = merged.users.find(u => u.email.trim().toLowerCase() === normalizedEmail);
+      }
+    }
+
+    if (!userToLogin) {
+      setAuthError('Usuário não encontrado no banco. Solicite cadastro novamente.');
+      return;
+    }
+
+    setLocalEmailVerified(userToLogin.id, true);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, userToLogin.id);
+    setCurrentUser({ ...userToLogin, emailVerified: true });
+    setView('dashboard');
+    setPin('');
   };
 
-  const handleUpdatePin = (userId: string, newPin: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, pin: newPin, updatedAt: Date.now() } : u));
+  const handleUpdatePin = async (user: User, newPin: string) => {
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, pin: newPin, updatedAt: Date.now() } : u));
+    const currentAuthUser = getFirebaseCurrentUser();
+    const oldPassword = buildAuthPassword(user.pin);
+    const newPassword = buildAuthPassword(newPin);
+    try {
+      if (!currentAuthUser || currentAuthUser.email?.toLowerCase() !== user.email.toLowerCase()) {
+        await signInFirebaseUser(user.email, oldPassword);
+      }
+      const firebaseUser = getFirebaseCurrentUser();
+      if (firebaseUser) {
+        await updateFirebasePassword(firebaseUser, newPassword);
+      }
+    } catch {
+      // ignora falhas de sync de senha
+    }
   };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -393,6 +566,7 @@ export default function App() {
     setRegisterError('');
     setRegisterFormError('');
     setRegisterEmailNotice(null);
+    setVerifyEmailNotice(null);
     if (!firestoreLoadedRef.current) {
       setRegisterFormError('Aguarde a sincronização inicial antes de cadastrar.');
       return;
@@ -421,6 +595,10 @@ export default function App() {
     }
 
     const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    if (safeUsers.some(u => u.email.trim().toLowerCase() === email)) {
+      setRegisterFormError('E-mail já cadastrado.');
+      return;
+    }
     const newUser: User = {
       id: crypto.randomUUID(),
       name: fullName,
@@ -429,6 +607,7 @@ export default function App() {
       pin,
       role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
       isMaster: isMasterAdmin,
+      emailVerified: false,
       position: formData.get('position') as string,
       dailyHours: Number(formData.get('dailyHours')),
       workDays,
@@ -436,24 +615,105 @@ export default function App() {
       updatedAt: Date.now(),
     };
 
-    setUsers(prev => [...prev, newUser]);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, newUser.id);
-    setCurrentUser(newUser);
-    setView('dashboard');
-
-    const emailResult = await sendRegistrationConfirmationEmail(newUser);
-    if (emailResult.ok) {
-      setRegisterEmailNotice({
-        type: 'success',
-        text: `E-mail de confirmação enviado para ${maskEmail(newUser.email)}.`,
-      });
-    } else if (emailResult.error && !emailResult.error.includes('não configurado')) {
-      setRegisterEmailNotice({
-        type: 'error',
-        text: emailResult.error,
-      });
+    const password = buildAuthPassword(pin);
+    try {
+      const firebaseUser = await createFirebaseUser(email, password);
+      setUsers(prev => [...prev, newUser]);
+      openVerifyEmailView(newUser.id, newUser.email);
+      setLocalEmailVerified(newUser.id, false);
+      try {
+        await sendFirebaseVerificationEmail(firebaseUser);
+        setVerifyEmailNotice({
+          type: 'success',
+          text: 'E-mail de confirmação enviado. Verifique sua caixa de entrada.',
+        });
+      } catch {
+        setVerifyEmailNotice({
+          type: 'error',
+          text: 'Conta criada, mas não foi possível enviar o e-mail de confirmação.',
+        });
+      }
+    } catch (error: any) {
+      const code = error?.code as string | undefined;
+      if (code === 'auth/email-already-in-use') {
+        setRegisterFormError('Este e-mail já está em uso. Faça login para verificar.');
+      } else if (code === 'auth/operation-not-allowed') {
+        setRegisterFormError('Habilite o provedor Email/Password no Firebase Auth.');
+      } else {
+        setRegisterFormError('Não foi possível criar a conta de autenticação.');
+      }
     }
-    // Quando o e-mail não está configurado (VITE_EMAILJS_*), não exibe aviso no dashboard
+  };
+
+  const handleVerifyEmail = async () => {
+    setVerifyEmailError('');
+    let user = verifyEmailUserId ? safeUsers.find(u => u.id === verifyEmailUserId) : null;
+    const firebaseUser = getFirebaseCurrentUser();
+    if (!firebaseUser) {
+      setVerifyEmailError('Sessão expirada. Faça login novamente.');
+      return;
+    }
+    if (user && firebaseUser.email?.toLowerCase() !== user.email.toLowerCase()) {
+      setVerifyEmailError('Sessão não corresponde ao e-mail cadastrado. Faça login novamente.');
+      return;
+    }
+    try {
+      await reloadFirebaseUser(firebaseUser);
+    } catch {
+      setVerifyEmailError('Não foi possível validar o e-mail agora.');
+      return;
+    }
+    if (!firebaseUser.emailVerified) {
+      setVerifyEmailError('Seu e-mail ainda não foi confirmado. Verifique a caixa de entrada.');
+      return;
+    }
+    if (!user) {
+      const data = await getKronusData();
+      if (data) {
+        const merged = mergeKronusData(
+          {
+            users: safeUsers,
+            logs: safeLogs,
+            pendingJustifications,
+            vacations,
+            relaxNotice,
+          },
+          data
+        );
+        setUsers(merged.users);
+        setLogs(merged.logs);
+        setPendingJustifications(merged.pendingJustifications);
+        setVacations(merged.vacations);
+        setRelaxNotice(merged.relaxNotice);
+        user = merged.users.find(u => u.email.trim().toLowerCase() === firebaseUser.email?.toLowerCase());
+      }
+    }
+    if (!user) {
+      setVerifyEmailError('Usuário não encontrado no banco. Solicite suporte.');
+      signOutFirebase();
+      return;
+    }
+    const verifiedUser: User = {
+      ...user,
+      emailVerified: true,
+      updatedAt: Date.now(),
+    };
+    setUsers(prev => prev.map(u => u.id === user.id ? verifiedUser : u));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, user.id);
+    setCurrentUser(verifiedUser);
+    setView('dashboard');
+    setVerifyEmailUserId(null);
+    setVerifyEmailError('');
+    setVerifyEmailNotice(null);
+    setRegisterEmailNotice({
+      type: 'success',
+      text: 'E-mail verificado com sucesso. Bem-vindo ao Kronus!',
+    });
+  };
+
+  const handleResendVerification = async () => {
+    setVerifyEmailError('');
+    await sendVerificationEmail();
   };
 
   const handleRemoveByCpf = (cpfInput: string, pinInput: string): void => {
@@ -734,6 +994,12 @@ export default function App() {
       }
       return { ...u, ...updates, updatedAt: Date.now() };
     }));
+    if (currentUser?.id === userId && updates.pin) {
+      const firebaseUser = getFirebaseCurrentUser();
+      if (firebaseUser) {
+        updateFirebasePassword(firebaseUser, buildAuthPassword(updates.pin)).catch(() => {});
+      }
+    }
   };
 
   const updateLog = (logId: string, updates: Partial<PunchLog>) => {
@@ -765,10 +1031,45 @@ export default function App() {
           setRememberMe={setRememberMe}
           authError={authError}
           onLogin={handleLogin}
-          onGoToRegister={() => { setView('register'); setAuthError(''); setRegisterError(''); setRegisterFormError(''); }}
+          onGoToRegister={() => {
+            setView('register');
+            setAuthError('');
+            setRegisterError('');
+            setRegisterFormError('');
+            setVerifyEmailUserId(null);
+            setVerifyEmailAddress('');
+            setVerifyEmailError('');
+            setVerifyEmailNotice(null);
+          }}
           onForgotPassword={() => { setView('forgot-password'); setAuthError(''); }}
         />
       </>
+    );
+  }
+
+  if (view === 'verify-email') {
+    const verifyUser = verifyEmailUserId ? safeUsers.find(u => u.id === verifyEmailUserId) : null;
+    const displayEmail = verifyUser?.email ?? verifyEmailAddress;
+    const fallbackError = verifyEmailError || (!verifyUser && !displayEmail
+      ? 'Usuário não encontrado. Volte ao login e tente novamente.'
+      : '');
+    return (
+      <VerifyEmailView
+        userName={verifyUser?.name ?? 'Usuário'}
+        email={displayEmail}
+        error={fallbackError || undefined}
+        notice={verifyEmailNotice}
+        onVerify={handleVerifyEmail}
+        onResend={handleResendVerification}
+        onBack={() => {
+          signOutFirebase();
+          setView('login');
+          setVerifyEmailUserId(null);
+          setVerifyEmailAddress('');
+          setVerifyEmailError('');
+          setVerifyEmailNotice(null);
+        }}
+      />
     );
   }
 
@@ -778,6 +1079,11 @@ export default function App() {
         users={safeUsers}
         onBack={() => setView('login')}
         onSuccess={(userWithNewPin) => {
+          if (!userWithNewPin.emailVerified) {
+            openVerifyEmailView(userWithNewPin.id, userWithNewPin.email);
+            sendVerificationEmail();
+            return;
+          }
           localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, userWithNewPin.id);
           setCurrentUser(userWithNewPin);
           setView('dashboard');
@@ -792,7 +1098,16 @@ export default function App() {
   if (view === 'register') {
     return (
       <RegisterView
-        onBack={() => { setView('login'); setRegisterError(''); setRegisterFormError(''); setRemoveByCpfMessage(null); }}
+        onBack={() => {
+          setView('login');
+          setRegisterError('');
+          setRegisterFormError('');
+          setRemoveByCpfMessage(null);
+          setVerifyEmailUserId(null);
+          setVerifyEmailAddress('');
+          setVerifyEmailError('');
+          setVerifyEmailNotice(null);
+        }}
         onSubmit={handleRegister}
         cpfError={registerError || undefined}
         formError={registerFormError || undefined}
@@ -809,10 +1124,15 @@ export default function App() {
         view={view}
         onNavigate={(v) => setView(v)}
         onLogout={() => {
+          signOutFirebase();
           localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
           setRegisterEmailNotice(null);
+          setVerifyEmailUserId(null);
+          setVerifyEmailAddress('');
+          setVerifyEmailError('');
+          setVerifyEmailNotice(null);
         }}
       />
 
@@ -821,10 +1141,15 @@ export default function App() {
         isAdmin={currentUser?.role === UserRole.ADMIN}
         onNavigate={(v) => setView(v)}
         onLogout={() => {
+          signOutFirebase();
           localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
           setRegisterEmailNotice(null);
+          setVerifyEmailUserId(null);
+          setVerifyEmailAddress('');
+          setVerifyEmailError('');
+          setVerifyEmailNotice(null);
         }}
       />
 
