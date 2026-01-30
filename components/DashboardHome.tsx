@@ -4,14 +4,14 @@ import { User, DaySummary } from '../types';
 import { WEEK_DAYS, PUNCH_DEADLINE_HOUR } from '../constants';
 import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
 
-function todayDateString(): string {
-  const d = new Date();
+function todayDateString(now: number): string {
+  const d = new Date(now);
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
 }
 
-function todayWorkDayId(): string {
-  return WEEK_DAYS[new Date().getDay()].id;
+function todayWorkDayId(now: number): string {
+  return WEEK_DAYS[new Date(now).getDay()].id;
 }
 
 interface DashboardHomeProps {
@@ -45,9 +45,9 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
 }) => {
   const [now, setNow] = useState(() => Date.now());
 
-  const todayStr = useMemo(() => todayDateString(), []);
+  const todayStr = useMemo(() => todayDateString(now), [now]);
   const todaySummary = useMemo(() => summaries.find(s => s.date === todayStr), [summaries, todayStr]);
-  const todayWdId = useMemo(() => todayWorkDayId(), []);
+  const todayWdId = useMemo(() => todayWorkDayId(now), [now]);
   const isTodayWorkDay = useMemo(
     () => !!currentUser?.workDays.includes(todayWdId),
     [currentUser?.workDays, todayWdId]
@@ -70,10 +70,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   );
 
   useEffect(() => {
-    if (!isClockedIn && !isTodayWorkDay) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const shouldTickFast = isClockedIn || (isTodayWorkDay && !hasPunchedInToday);
+    const intervalMs = shouldTickFast ? 1000 : 60000;
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(t);
-  }, [isClockedIn, isTodayWorkDay]);
+  }, [isClockedIn, isTodayWorkDay, hasPunchedInToday]);
 
   const { countdownRemainingMs, overtimeMs } = useMemo(() => {
     if (!isClockedIn || !currentUser || !lastClockInTime) {
@@ -96,7 +97,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           Olá, {currentUser?.name.split(' ')[0]} 👋
         </h2>
         <p className="text-slate-500 mt-1">
-          Hoje é {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          Hoje é {new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">

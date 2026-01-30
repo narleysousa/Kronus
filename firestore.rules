@@ -19,11 +19,11 @@ service cloud.firestore {
             && data.logs.size() <= 100000;
       }
 
-      // Leitura: permitida (em produção, use: allow read: if request.auth != null;)
-      allow read: if true;
+      // Leitura: somente usuários autenticados (habilite auth anônimo no Firebase)
+      allow read: if request.auth != null;
 
       // Escrita: só se o payload tiver a estrutura válida do Kronus
-      allow write: if isValidKronusData();
+      allow write: if request.auth != null && isValidKronusData();
     }
 
     // Bloqueia qualquer outro path no Firestore (segurança)

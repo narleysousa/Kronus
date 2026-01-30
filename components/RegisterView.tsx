@@ -2,18 +2,28 @@ import React from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { KronusLogo, WEEK_DAYS } from '../constants';
 import { formatCpfDisplay } from '../utils/cpfMask';
+import { PinInput } from './PinInput';
 
 interface RegisterViewProps {
   onBack: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   cpfError?: string;
-  onRemoveByCpf?: (cpf: string) => void;
+  formError?: string;
+  onRemoveByCpf?: (cpf: string, pin: string) => void;
   removeByCpfMessage?: { type: 'success' | 'error'; text: string } | null;
 }
 
-export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cpfError, onRemoveByCpf, removeByCpfMessage }) => {
+export const RegisterView: React.FC<RegisterViewProps> = ({
+  onBack,
+  onSubmit,
+  cpfError,
+  formError,
+  onRemoveByCpf,
+  removeByCpfMessage,
+}) => {
   const [cpfRaw, setCpfRaw] = React.useState('');
   const [removeCpfRaw, setRemoveCpfRaw] = React.useState('');
+  const [removePin, setRemovePin] = React.useState('');
   const [pinVisible, setPinVisible] = React.useState(false); // padrão: sempre ocultar
   const displayCpf = formatCpfDisplay(cpfRaw);
   const displayRemoveCpf = formatCpfDisplay(removeCpfRaw);
@@ -25,8 +35,14 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
   };
   const handleRemoveByCpfClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    onRemoveByCpf?.(removeCpfRaw);
+    onRemoveByCpf?.(removeCpfRaw, removePin);
   };
+  React.useEffect(() => {
+    if (removeByCpfMessage?.type === 'success') {
+      setRemovePin('');
+      setRemoveCpfRaw('');
+    }
+  }, [removeByCpfMessage]);
 
   return (
     <div className="min-h-screen py-12 px-4 bg-slate-50">
@@ -91,14 +107,21 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
                     onChange={handleRemoveCpfChange}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveByCpfClick}
-                  className="px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-100 focus:outline-none"
-                >
-                  Remover meu cadastro
-                </button>
               </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-600 uppercase">Confirme seu PIN</p>
+                <div className="flex justify-center">
+                  <PinInput value={removePin} onChange={setRemovePin} aria-label="PIN para remoção" />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveByCpfClick}
+                disabled={removeCpfRaw.length < 11 || removePin.length < 4}
+                className="px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-100 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Remover meu cadastro
+              </button>
               {removeByCpfMessage && (
                 <p
                   className={`text-sm ${removeByCpfMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}
@@ -165,6 +188,12 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onBack, onSubmit, cp
               Finalizar Cadastro e Entrar
             </button>
           </div>
+
+          {formError && (
+            <div className="md:col-span-2 text-center text-sm text-rose-600 font-medium" role="alert">
+              {formError}
+            </div>
+          )}
         </form>
       </div>
     </div>

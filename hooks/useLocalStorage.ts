@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+  const initialValueRef = useRef(initialValue);
   const [stored, setStored] = useState<T>(() => {
     try {
       const item = localStorage.getItem(key);
@@ -24,11 +25,14 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === key && e.newValue !== null) {
-        try {
-          setStored(JSON.parse(e.newValue) as T);
-        } catch {}
+      if (e.key !== key) return;
+      if (e.newValue === null) {
+        setStored(initialValueRef.current);
+        return;
       }
+      try {
+        setStored(JSON.parse(e.newValue) as T);
+      } catch {}
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);

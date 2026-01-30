@@ -14,14 +14,14 @@ const PERIODS: { id: string; label: string; days: number }[] = [
   { id: '1y', label: '1 ano', days: 365 },
 ];
 
-function todayString(): string {
-  const d = new Date();
+function todayString(now: number): string {
+  const d = new Date(now);
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
 }
 
-function cutoffString(daysAgo: number): string {
-  const d = new Date();
+function cutoffString(now: number, daysAgo: number): string {
+  const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - daysAgo);
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -37,17 +37,23 @@ interface ProductivityDashboardProps {
 
 export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ summaries, onClose, embedded }) => {
   const [selectedPeriodId, setSelectedPeriodId] = useState('30');
-  const today = useMemo(() => todayString(), []);
+  const [now, setNow] = useState(() => Date.now());
+  const today = useMemo(() => todayString(now), [now]);
   const selectedPeriod = PERIODS.find(p => p.id === selectedPeriodId) ?? PERIODS[3];
+
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const { cutoff, daysInPeriod, accumulatedTotal } = useMemo(() => {
     const days = selectedPeriod.days;
-    const cutoff = cutoffString(days);
+    const cutoff = cutoffString(now, days);
     const filtered = summaries.filter(s => s.date >= cutoff && s.date <= today);
     const daysInPeriod = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
     const total = daysInPeriod.reduce((acc, s) => acc + (s.totalHours - s.expectedHours), 0);
     return { cutoff, daysInPeriod: daysInPeriod, accumulatedTotal: total };
-  }, [summaries, selectedPeriod.days, today]);
+  }, [summaries, selectedPeriod.days, today, now]);
 
   const header = (
     <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">

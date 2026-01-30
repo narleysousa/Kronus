@@ -33,9 +33,6 @@ export const WEEK_DAYS = [
   { id: 'Sab', label: 'Sábado' },
 ];
 
-/** Nome do usuário que, ao se cadastrar, vira automaticamente administrador master. */
-export const MASTER_ADMIN_NAME = 'Narley Almeida de Sousa';
-
 /** Hora limite (0–24) do dia para o usuário bater o ponto: prazo de 6h desde 00:00. */
 export const PUNCH_DEADLINE_HOUR = 6;
 

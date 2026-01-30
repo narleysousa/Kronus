@@ -23,7 +23,7 @@ const getLogTypeInfo = (log: PunchLog) => {
       dotClass: 'bg-rose-500',
     };
   }
-  const label = log.justificationKind === 'missed' ? 'Justificado' : 'Liberação';
+  const label = log.justificationKind === 'missed' ? 'Justificado' : 'Compromisso pessoal';
   return {
     label,
     badgeClass: 'bg-amber-100 text-amber-700',

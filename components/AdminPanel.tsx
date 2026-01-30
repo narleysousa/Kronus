@@ -65,7 +65,7 @@ const getLogTypeInfo = (log: PunchLog) => {
   if (log.type === 'OUT') {
     return { label: 'Saída', badgeClass: 'bg-rose-100 text-rose-700' };
   }
-  const label = log.justificationKind === 'missed' ? 'Justificado' : 'Liberação';
+  const label = log.justificationKind === 'missed' ? 'Justificado' : 'Compromisso pessoal';
   return { label, badgeClass: 'bg-amber-100 text-amber-700' };
 };
 
@@ -99,12 +99,13 @@ const createDefaultLogDraft = (): LogDraft => {
   };
 };
 
-/** ADM pode sempre editar as próprias horas; master pode editar de todos; ADM comum só de usuários comuns. */
+/** Hierarquia: master -> tudo; admin -> próprias horas + usuários comuns; usuário -> nada. */
 const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
-  if (!currentUser || currentUser.role !== UserRole.ADMIN) return false;
-  if (targetUser.id === currentUser.id) return true; // adm pode editar suas próprias horas
+  if (!currentUser) return false;
   if (currentUser.isMaster) return true;
-  return targetUser.role === UserRole.USER;
+  if (currentUser.role !== UserRole.ADMIN) return false;
+  if (targetUser.id === currentUser.id) return true;
+  return targetUser.role === UserRole.USER && !targetUser.isMaster;
 };
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -141,6 +142,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [pinVisible, setPinVisible] = useState(false); // padrão: sempre ocultar
 
   const startEditUser = (user: User) => {
+    if (user.isMaster && !currentUser?.isMaster) return;
     setUserDrafts(prev => ({ ...prev, [user.id]: createUserDraft(user) }));
     setEditingUserId(user.id);
   };
@@ -168,6 +170,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const saveUser = (user: User) => {
+    if (user.isMaster && !currentUser?.isMaster) {
+      setEditingUserId(null);
+      return;
+    }
     const draft = userDrafts[user.id];
     if (!draft) return;
     const dailyHours = Number(draft.dailyHours);
@@ -213,6 +219,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!draft?.date || !draft?.time) return;
     const timestamp = new Date(`${draft.date}T${draft.time}`).getTime();
     if (draft.type === 'JUSTIFIED') {
+      const existing = logs.find(log => log.id === logId);
       if (!draft.endTime) return;
       const endTimestamp = new Date(`${draft.date}T${draft.endTime}`).getTime();
       if (Number.isNaN(timestamp) || Number.isNaN(endTimestamp) || endTimestamp <= timestamp) return;
@@ -221,6 +228,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         endTimestamp,
         type: draft.type,
         dateString: draft.date,
+        justificationKind: existing?.justificationKind ?? 'personal',
       });
     } else {
       onUpdateLog(logId, {
@@ -264,6 +272,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         endTimestamp,
         type: draft.type,
         dateString: draft.date,
+        justificationKind: 'personal',
       });
     } else {
       onAddLog({
@@ -304,6 +313,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const userPinDigits = draft.pin.replace(/\D/g, '').slice(0, 4);
           const canSaveUser = draft.name.trim() && draft.email.trim() && draft.position.trim() && userPinDigits.length === 4 && draft.dailyHours.trim();
           const newLogDraft = newLogDrafts[user.id] || createDefaultLogDraft();
+          const canEditUser = !user.isMaster || currentUser?.isMaster;
 
           return (
             <article key={user.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:border-indigo-100 transition-all">
@@ -346,7 +356,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         startEditUser(user);
                       }
                     }}
-                    className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-100 transition-all flex items-center gap-2"
+                    disabled={!canEditUser}
+                    title={!canEditUser ? 'Somente administrador master pode editar este usuário.' : undefined}
+                    className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-100 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Edit2 size={16} aria-hidden />
                     {isEditingUser ? 'Fechar Edição' : 'Editar Usuário'}

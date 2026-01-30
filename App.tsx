@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from './types';
-import { LOCAL_STORAGE_KEYS, KronusLogo, MASTER_ADMIN_NAME } from './constants';
+import { LOCAL_STORAGE_KEYS, KronusLogo } from './constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { generateCode, CODE_EXPIRY_MS } from './utils/code';
-import { getKronusData, setKronusData } from './services/firestoreService';
+import { getKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
@@ -119,6 +119,7 @@ export default function App() {
   });
   const [authError, setAuthError] = useState('');
   const [registerError, setRegisterError] = useState('');
+  const [registerFormError, setRegisterFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
   const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
@@ -147,19 +148,6 @@ export default function App() {
   const safeLogs = Array.isArray(logs) ? logs : [];
 
   useEffect(() => {
-    const hasMaster = safeUsers.some(user => user.isMaster);
-    if (hasMaster) return;
-    const masterByName = safeUsers.find(
-      user => user.name.trim().toLowerCase() === MASTER_ADMIN_NAME.trim().toLowerCase()
-    );
-    if (!masterByName) return;
-    setUsers(prev => prev.map(user => user.id === masterByName.id
-      ? { ...user, isMaster: true, role: UserRole.ADMIN }
-      : user
-    ));
-  }, [safeUsers, setUsers]);
-
-  useEffect(() => {
     if (!Array.isArray(users)) {
       setUsers([]);
     }
@@ -172,16 +160,31 @@ export default function App() {
   }, [logs, setLogs]);
 
   useEffect(() => {
+    let mounted = true;
     getKronusData().then((data) => {
+      if (!mounted) return;
       if (data) {
-        setUsers(data.users);
-        setLogs(data.logs);
-        setPendingJustifications(data.pendingJustifications);
-        setVacations(data.vacations);
-        setRelaxNotice(data.relaxNotice);
+        const merged = mergeKronusData(
+          {
+            users: safeUsers,
+            logs: safeLogs,
+            pendingJustifications,
+            vacations,
+            relaxNotice,
+          },
+          data
+        );
+        setUsers(merged.users);
+        setLogs(merged.logs);
+        setPendingJustifications(merged.pendingJustifications);
+        setVacations(merged.vacations);
+        setRelaxNotice(merged.relaxNotice);
       }
       firestoreLoadedRef.current = true;
     });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -202,7 +205,7 @@ export default function App() {
     if (!firestoreLoadedRef.current) return;
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(() => {
-      setKronusData({
+      mergeAndSetKronusData({
         users: safeUsers,
         logs: safeLogs,
         pendingJustifications,
@@ -372,12 +375,17 @@ export default function App() {
   };
 
   const handleUpdatePin = (userId: string, newPin: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, pin: newPin } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, pin: newPin, updatedAt: Date.now() } : u));
   };
 
   const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setRegisterError('');
+    setRegisterFormError('');
+    if (!firestoreLoadedRef.current) {
+      setRegisterFormError('Aguarde a sincronização inicial antes de cadastrar.');
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     const cpfRaw = (formData.get('cpf') as string)?.replace(/\D/g, '') || '';
     if (safeUsers.some(u => cpfDigits(u.cpf) === cpfRaw)) {
@@ -388,20 +396,32 @@ export default function App() {
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
     const fullName = `${firstName} ${lastName}`.trim();
-    const isMasterAdmin = fullName.trim().toLowerCase() === MASTER_ADMIN_NAME.trim().toLowerCase();
+    const isFirstUser = safeUsers.length === 0;
+    const isMasterAdmin = isFirstUser;
+    const pin = (formData.get('pin') as string)?.replace(/\D/g, '').slice(0, 4) || '';
+    if (pin.length !== 4) {
+      setRegisterFormError('O PIN deve ter 4 dígitos numéricos.');
+      return;
+    }
+    const workDays = formData.getAll('workDays') as string[];
+    if (!workDays.length) {
+      setRegisterFormError('Selecione ao menos um dia de trabalho.');
+      return;
+    }
 
     const newUser: User = {
       id: crypto.randomUUID(),
       name: fullName,
       email: formData.get('email') as string,
       cpf: formatCpfDisplay(cpfRaw),
-      pin: formData.get('pin') as string,
+      pin,
       role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
       isMaster: isMasterAdmin,
       position: formData.get('position') as string,
       dailyHours: Number(formData.get('dailyHours')),
-      workDays: formData.getAll('workDays') as string[],
+      workDays,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     setUsers(prev => [...prev, newUser]);
@@ -410,7 +430,7 @@ export default function App() {
     setView('dashboard');
   };
 
-  const handleRemoveByCpf = (cpfInput: string): void => {
+  const handleRemoveByCpf = (cpfInput: string, pinInput: string): void => {
     setRemoveByCpfMessage(null);
     const normalized = cpfDigits(cpfInput);
     if (normalized.length !== 11) {
@@ -420,6 +440,19 @@ export default function App() {
     const user = safeUsers.find(u => cpfDigits(u.cpf) === normalized);
     if (!user) {
       setRemoveByCpfMessage({ type: 'error', text: 'CPF não encontrado.' });
+      return;
+    }
+    if (user.isMaster && safeUsers.length > 1) {
+      setRemoveByCpfMessage({ type: 'error', text: 'Não é possível remover um administrador master enquanto houver outros usuários.' });
+      return;
+    }
+    const pin = pinInput.replace(/\D/g, '').slice(0, 4);
+    if (pin.length !== 4) {
+      setRemoveByCpfMessage({ type: 'error', text: 'Digite o PIN de 4 dígitos para confirmar.' });
+      return;
+    }
+    if (pin !== user.pin) {
+      setRemoveByCpfMessage({ type: 'error', text: 'PIN incorreto. Verifique e tente novamente.' });
       return;
     }
     setUsers(prev => prev.filter(u => u.id !== user.id));
@@ -455,7 +488,8 @@ export default function App() {
       userId: currentUser.id,
       timestamp: now,
       type,
-      dateString: todayString
+      dateString: todayString,
+      updatedAt: now,
     };
 
     setLogs(prev => [newLog, ...prev]);
@@ -512,6 +546,7 @@ export default function App() {
       type: 'JUSTIFIED',
       justificationKind: 'personal',
       dateString: personalDate,
+      updatedAt: Date.now(),
     };
 
     setLogs(prev => [newLog, ...prev]);
@@ -550,6 +585,7 @@ export default function App() {
       startDate: vacationStartDate,
       endDate: vacationEndDate,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
 
     setVacations(prev => ({
@@ -580,6 +616,7 @@ export default function App() {
       justification: reason,
       justificationKind: 'missed',
       dateString: missedJustificationDate,
+      updatedAt: Date.now(),
     };
 
     setLogs(prev => [newLog, ...prev]);
@@ -604,22 +641,37 @@ export default function App() {
   };
 
   const promoteUser = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, updatedAt: Date.now() } : u));
   };
 
   const promoteToMaster = (userId: string) => {
     if (!currentUser?.isMaster) return;
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, isMaster: true } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() } : u));
   };
 
   const demoteToUser = (userId: string) => {
     if (!currentUser?.isMaster) return;
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.USER, isMaster: false } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.USER, isMaster: false, updatedAt: Date.now() } : u));
   };
 
   const deleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
     setLogs(prev => prev.filter(l => l.userId !== userId));
+    setPendingJustifications(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+    setVacations(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+    setRelaxNotice(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
   };
 
   const handleRequestDeleteUser = (user: User) => {
@@ -641,22 +693,39 @@ export default function App() {
     setDeleteUserPinError('');
   };
 
+  const canManageLogsForUser = (actor: User | null, targetUserId: string): boolean => {
+    if (!actor) return false;
+    if (actor.isMaster) return true;
+    if (actor.role !== UserRole.ADMIN) return false;
+    if (actor.id === targetUserId) return true;
+    const targetUser = safeUsers.find(u => u.id === targetUserId);
+    if (!targetUser) return false;
+    return targetUser.role === UserRole.USER && !targetUser.isMaster;
+  };
+
   const updateUser = (userId: string, updates: Partial<User>) => {
     setUsers(prev => prev.map(u => {
       if (u.id !== userId) return u;
       if (u.isMaster) {
-        return { ...u, ...updates, role: UserRole.ADMIN, isMaster: true };
+        return { ...u, ...updates, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() };
       }
-      return { ...u, ...updates };
+      return { ...u, ...updates, updatedAt: Date.now() };
     }));
   };
 
   const updateLog = (logId: string, updates: Partial<PunchLog>) => {
-    setLogs(prev => prev.map(l => l.id === logId ? { ...l, ...updates } : l));
+    setLogs(prev => {
+      const existing = prev.find(l => l.id === logId);
+      if (!existing) return prev;
+      if (!canManageLogsForUser(currentUser, existing.userId)) return prev;
+      return prev.map(l => l.id === logId ? { ...l, ...updates, updatedAt: Date.now() } : l);
+    });
   };
 
   const addLog = (log: PunchLog) => {
-    setLogs(prev => [log, ...prev]);
+    const now = Date.now();
+    if (!canManageLogsForUser(currentUser, log.userId)) return;
+    setLogs(prev => [{ ...log, updatedAt: log.updatedAt ?? now }, ...prev]);
   };
 
   const isClockedIn = lastWorkLog?.type === 'IN';
@@ -673,7 +742,7 @@ export default function App() {
           setRememberMe={setRememberMe}
           authError={authError}
           onLogin={handleLogin}
-          onGoToRegister={() => { setView('register'); setAuthError(''); setRegisterError(''); }}
+          onGoToRegister={() => { setView('register'); setAuthError(''); setRegisterError(''); setRegisterFormError(''); }}
           onForgotPassword={() => { setView('forgot-password'); setAuthError(''); }}
         />
       </>
@@ -700,9 +769,10 @@ export default function App() {
   if (view === 'register') {
     return (
       <RegisterView
-        onBack={() => { setView('login'); setRegisterError(''); setRemoveByCpfMessage(null); }}
+        onBack={() => { setView('login'); setRegisterError(''); setRegisterFormError(''); setRemoveByCpfMessage(null); }}
         onSubmit={handleRegister}
         cpfError={registerError || undefined}
+        formError={registerFormError || undefined}
         onRemoveByCpf={handleRemoveByCpf}
         removeByCpfMessage={removeByCpfMessage}
       />

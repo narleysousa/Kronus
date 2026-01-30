@@ -29,7 +29,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
 1. Install dependencies:
    `npm install`
 2. Set the Gemini API key in `.env.local`:
-   - `VITE_GEMINI_API_KEY=your_key` (recomendado) ou `GEMINI_API_KEY=your_key`
+   - `VITE_GEMINI_API_KEY=your_key`
+3. (Opcional) Controlar o sync com Firestore:
+   - `VITE_FIRESTORE_ENABLED=true` (padrão é `true`)
+4. Se usar Firestore, habilite **Anonymous Auth** no Firebase (as regras exigem `request.auth != null`).
 3. Run the app:
    `npm run dev`
 

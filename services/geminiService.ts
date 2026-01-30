@@ -6,7 +6,7 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export async function getWorkPerformanceInsight(user: User, summaries: DaySummary[]): Promise<string> {
   if (!ai) {
-    return "Configure VITE_GEMINI_API_KEY ou GEMINI_API_KEY no .env.local para usar os insights com IA.";
+    return "Configure VITE_GEMINI_API_KEY no .env.local para usar os insights com IA.";
   }
 
   const prompt = `

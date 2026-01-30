@@ -1,5 +1,5 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, signInAnonymously, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -15,6 +15,9 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let authPromise: Promise<boolean> | null = null;
+
+const FIRESTORE_ENABLED = (import.meta.env.VITE_FIRESTORE_ENABLED ?? 'true') !== 'false';
 
 function getFirebaseApp(): FirebaseApp {
   if (!getApps().length) {
@@ -30,6 +33,28 @@ export function getFirebaseAuth(): Auth {
     auth = getAuth(getFirebaseApp());
   }
   return auth;
+}
+
+export function isFirestoreEnabled(): boolean {
+  return FIRESTORE_ENABLED;
+}
+
+export async function ensureFirebaseAuth(): Promise<boolean> {
+  if (!isFirestoreEnabled()) return false;
+  if (authPromise) return authPromise;
+  authPromise = (async () => {
+    try {
+      const firebaseAuth = getFirebaseAuth();
+      if (firebaseAuth.currentUser) return true;
+      await signInAnonymously(firebaseAuth);
+      return true;
+    } catch (error) {
+      console.warn('Firebase auth unavailable:', error);
+      authPromise = null;
+      return false;
+    }
+  })();
+  return authPromise;
 }
 
 export function getFirebaseDb(): Firestore {

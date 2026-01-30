@@ -16,6 +16,7 @@ export interface User {
   dailyHours: number;
   workDays: string[]; // e.g. ["Mon", "Tue"...]
   createdAt: number;
+  updatedAt?: number;
 }
 
 export type PunchType = 'IN' | 'OUT' | 'JUSTIFIED';
@@ -29,6 +30,7 @@ export interface PunchLog {
   dateString: string; // YYYY-MM-DD
   justification?: string;
   justificationKind?: 'personal' | 'missed';
+  updatedAt?: number;
 }
 
 export interface DaySummary {
@@ -45,4 +47,5 @@ export interface VacationRange {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   createdAt: number;
+  updatedAt?: number;
 }
