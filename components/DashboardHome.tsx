@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, History, ChevronRight, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, History, ChevronRight, TrendingUp, Calendar, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { User, DaySummary } from '../types';
 import { WEEK_DAYS, PUNCH_DEADLINE_HOUR } from '../constants';
 import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
@@ -22,6 +22,8 @@ interface DashboardHomeProps {
   summaries: DaySummary[];
   bankOfHours: number;
   isClockedIn: boolean;
+  emailNotice?: { type: 'success' | 'error'; text: string } | null;
+  onDismissEmailNotice?: () => void;
   onPunch: () => void;
   onGoToHistory: () => void;
   onOpenPersonalCommitment: () => void;
@@ -37,6 +39,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   summaries,
   bankOfHours,
   isClockedIn,
+  emailNotice,
+  onDismissEmailNotice,
   onPunch,
   onGoToHistory,
   onOpenPersonalCommitment,
@@ -91,6 +95,35 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
 
   return (
   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    {emailNotice && (
+      <div
+        className={`flex items-start justify-between gap-3 rounded-2xl border p-4 text-sm font-semibold ${
+          emailNotice.type === 'success'
+            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+            : 'bg-amber-50 border-amber-100 text-amber-700'
+        }`}
+        role="status"
+      >
+        <div className="flex items-start gap-3">
+          {emailNotice.type === 'success' ? (
+            <CheckCircle2 size={18} aria-hidden />
+          ) : (
+            <AlertCircle size={18} aria-hidden />
+          )}
+          <span>{emailNotice.text}</span>
+        </div>
+        {onDismissEmailNotice && (
+          <button
+            type="button"
+            onClick={onDismissEmailNotice}
+            className="rounded-lg p-1 text-current/70 hover:text-current"
+            aria-label="Fechar aviso"
+          >
+            <X size={16} aria-hidden />
+          </button>
+        )}
+      </div>
+    )}
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
         <h2 className="text-3xl font-bold text-slate-800">

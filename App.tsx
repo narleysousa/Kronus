@@ -3,8 +3,10 @@ import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from '
 import { LOCAL_STORAGE_KEYS, KronusLogo } from './constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
+import { maskEmail } from './utils/emailMask';
 import { generateCode, CODE_EXPIRY_MS } from './utils/code';
 import { getKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
+import { sendRegistrationConfirmationEmail } from './services/emailService';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
@@ -140,6 +142,7 @@ export default function App() {
   const [missedJustificationError, setMissedJustificationError] = useState('');
   const [relaxModalOpen, setRelaxModalOpen] = useState(false);
   const [removeByCpfMessage, setRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [registerEmailNotice, setRegisterEmailNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionRestoredRef = useRef(false);
@@ -231,6 +234,7 @@ export default function App() {
     if (!updated) {
       setCurrentUser(null);
       setView('login');
+      setRegisterEmailNotice(null);
       localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
       return;
     }
@@ -378,10 +382,11 @@ export default function App() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, pin: newPin, updatedAt: Date.now() } : u));
   };
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setRegisterError('');
     setRegisterFormError('');
+    setRegisterEmailNotice(null);
     if (!firestoreLoadedRef.current) {
       setRegisterFormError('Aguarde a sincronização inicial antes de cadastrar.');
       return;
@@ -409,10 +414,11 @@ export default function App() {
       return;
     }
 
+    const email = String(formData.get('email') ?? '').trim().toLowerCase();
     const newUser: User = {
       id: crypto.randomUUID(),
       name: fullName,
-      email: formData.get('email') as string,
+      email,
       cpf: formatCpfDisplay(cpfRaw),
       pin,
       role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
@@ -428,6 +434,19 @@ export default function App() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, newUser.id);
     setCurrentUser(newUser);
     setView('dashboard');
+
+    const emailResult = await sendRegistrationConfirmationEmail(newUser);
+    if (emailResult.ok) {
+      setRegisterEmailNotice({
+        type: 'success',
+        text: `E-mail de confirmação enviado para ${maskEmail(newUser.email)}.`,
+      });
+    } else {
+      setRegisterEmailNotice({
+        type: 'error',
+        text: emailResult.error ?? 'Não foi possível enviar o e-mail de confirmação.',
+      });
+    }
   };
 
   const handleRemoveByCpf = (cpfInput: string, pinInput: string): void => {
@@ -697,10 +716,7 @@ export default function App() {
     if (!actor) return false;
     if (actor.isMaster) return true;
     if (actor.role !== UserRole.ADMIN) return false;
-    if (actor.id === targetUserId) return true;
-    const targetUser = safeUsers.find(u => u.id === targetUserId);
-    if (!targetUser) return false;
-    return targetUser.role === UserRole.USER && !targetUser.isMaster;
+    return actor.id === targetUserId;
   };
 
   const updateUser = (userId: string, updates: Partial<User>) => {
@@ -789,6 +805,7 @@ export default function App() {
           localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
+          setRegisterEmailNotice(null);
         }}
       />
 
@@ -800,6 +817,7 @@ export default function App() {
           localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
+          setRegisterEmailNotice(null);
         }}
       />
 
@@ -824,6 +842,8 @@ export default function App() {
               summaries={summaries}
               bankOfHours={bankOfHours}
               isClockedIn={isClockedIn}
+              emailNotice={registerEmailNotice}
+              onDismissEmailNotice={() => setRegisterEmailNotice(null)}
               onPunch={handlePunch}
               onGoToHistory={() => setView('history')}
               onOpenPersonalCommitment={openPersonalModal}

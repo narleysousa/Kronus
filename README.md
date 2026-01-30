@@ -33,7 +33,12 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
 3. (Opcional) Controlar o sync com Firestore:
    - `VITE_FIRESTORE_ENABLED=true` (padrão é `true`)
 4. Se usar Firestore, habilite **Anonymous Auth** no Firebase (as regras exigem `request.auth != null`).
-3. Run the app:
+5. (Opcional) Envio de e-mail de confirmação de cadastro via EmailJS:
+   - `VITE_EMAILJS_SERVICE_ID=...`
+   - `VITE_EMAILJS_TEMPLATE_ID=...`
+   - `VITE_EMAILJS_PUBLIC_KEY=...`
+   - Parâmetros esperados no template: `to_name`, `to_email`, `cpf`, `position`, `app_name`, `app_url`, `registered_at`
+6. Run the app:
    `npm run dev`
 
 ## GitHub Pages (publicar o app na web)

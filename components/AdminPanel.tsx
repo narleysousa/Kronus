@@ -99,13 +99,12 @@ const createDefaultLogDraft = (): LogDraft => {
   };
 };
 
-/** Hierarquia: master -> tudo; admin -> próprias horas + usuários comuns; usuário -> nada. */
+/** Hierarquia: master -> tudo; admin -> somente próprios registros; usuário -> nada. */
 const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
   if (!currentUser) return false;
   if (currentUser.isMaster) return true;
   if (currentUser.role !== UserRole.ADMIN) return false;
-  if (targetUser.id === currentUser.id) return true;
-  return targetUser.role === UserRole.USER && !targetUser.isMaster;
+  return targetUser.id === currentUser.id;
 };
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
