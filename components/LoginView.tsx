@@ -8,8 +8,6 @@ interface LoginViewProps {
   setLoginEmail: (v: string) => void;
   pin: string;
   setPin: (v: string) => void;
-  rememberMe: boolean;
-  setRememberMe: (v: boolean) => void;
   authError: string;
   onLogin: () => void;
   onGoToRegister: () => void;
@@ -26,8 +24,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   setLoginEmail,
   pin,
   setPin,
-  rememberMe,
-  setRememberMe,
   authError,
   onLogin,
   onGoToRegister,
@@ -64,17 +60,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <label className="block text-sm font-semibold text-slate-700 mb-4 text-center">Digite seu PIN de 4 dígitos</label>
             <PinInput value={pin} onChange={setPin} aria-label="PIN de acesso" />
           </div>
-
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              aria-describedby="remember-hint"
-            />
-            <span id="remember-hint" className="text-sm font-medium text-slate-600">Lembrar e-mail neste dispositivo</span>
-          </label>
 
           <button
             type="button"

@@ -30,4 +30,4 @@
 
 ## Security & Configuration Tips
 - Create `.env.local` with `GEMINI_API_KEY` for local Gemini access; never commit secrets.
-- User and punch data are stored in `localStorage` (`kronus_users`, `kronus_logs`), so clearing storage resets app state.
+- User and punch data are stored in Firestore; there are no local `localStorage` saves.

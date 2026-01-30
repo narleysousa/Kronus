@@ -35,14 +35,3 @@ export const WEEK_DAYS = [
 
 /** Hora limite (0–24) do dia para o usuário bater o ponto: prazo de 6h desde 00:00. */
 export const PUNCH_DEADLINE_HOUR = 6;
-
-export const LOCAL_STORAGE_KEYS = {
-  USERS: 'kronus_users',
-  LOGS: 'kronus_logs',
-  REMEMBER_CPF: 'kronus_remember_cpf',
-  REMEMBER_EMAIL: 'kronus_remember_email',
-  PENDING_JUSTIFICATIONS: 'kronus_pending_justifications',
-  VACATIONS: 'kronus_vacations',
-  RELAX_NOTICE: 'kronus_relax_notice',
-  SESSION_USER_ID: 'kronus_session_user_id',
-} as const;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from './types';
-import { LOCAL_STORAGE_KEYS, KronusLogo } from './constants';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import { KronusLogo } from './constants';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { generateCode, CODE_EXPIRY_MS } from './utils/code';
 import { buildAuthPassword } from './utils/authPassword';
@@ -12,9 +11,11 @@ import {
   sendFirebaseVerificationEmail,
   reloadFirebaseUser,
   getFirebaseCurrentUser,
+  getFirebaseAuth,
   updateFirebasePassword,
   signOutFirebase,
 } from './services/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
@@ -95,39 +96,17 @@ const findMissingWorkday = (
 };
 
 export default function App() {
-  const [users, setUsers] = useLocalStorage<User[]>(LOCAL_STORAGE_KEYS.USERS, []);
-  const [logs, setLogs] = useLocalStorage<PunchLog[]>(LOCAL_STORAGE_KEYS.LOGS, []);
-  const [pendingJustifications, setPendingJustifications] = useLocalStorage<Record<string, string>>(
-    LOCAL_STORAGE_KEYS.PENDING_JUSTIFICATIONS,
-    {}
-  );
-  const [vacations, setVacations] = useLocalStorage<Record<string, VacationRange[]>>(
-    LOCAL_STORAGE_KEYS.VACATIONS,
-    {}
-  );
-  const [relaxNotice, setRelaxNotice] = useLocalStorage<Record<string, boolean>>(
-    LOCAL_STORAGE_KEYS.RELAX_NOTICE,
-    {}
-  );
+  const [users, setUsers] = useState<User[]>([]);
+  const [logs, setLogs] = useState<PunchLog[]>([]);
+  const [pendingJustifications, setPendingJustifications] = useState<Record<string, string>>({});
+  const [vacations, setVacations] = useState<Record<string, VacationRange[]>>({});
+  const [relaxNotice, setRelaxNotice] = useState<Record<string, boolean>>({});
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [view, setView] = useState<AppView>('login');
+  const viewRef = useRef<AppView>('login');
   const [pin, setPin] = useState('');
-  const [loginEmail, setLoginEmail] = useState(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
-      return saved ? saved : '';
-    } catch {
-      return '';
-    }
-  });
-  const [rememberMe, setRememberMe] = useState(() => {
-    try {
-      return !!localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
-    } catch {
-      return false;
-    }
-  });
+  const [loginEmail, setLoginEmail] = useState('');
   const [authError, setAuthError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [registerFormError, setRegisterFormError] = useState('');
@@ -140,6 +119,7 @@ export default function App() {
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
   const [deleteUserPin, setDeleteUserPin] = useState('');
   const [deleteUserPinError, setDeleteUserPinError] = useState('');
+  const [adminRemoveByCpfMessage, setAdminRemoveByCpfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [personalModalOpen, setPersonalModalOpen] = useState(false);
   const [personalDate, setPersonalDate] = useState(() => toLocalDateInput(Date.now()));
   const [personalStartTime, setPersonalStartTime] = useState(() => toLocalTimeInput(Date.now()));
@@ -158,10 +138,26 @@ export default function App() {
   const [registerEmailNotice, setRegisterEmailNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionRestoredRef = useRef(false);
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
+  const usersRef = useRef<User[]>(safeUsers);
+  const logsRef = useRef<PunchLog[]>(safeLogs);
+  const pendingRef = useRef<Record<string, string>>(pendingJustifications);
+  const vacationsRef = useRef<Record<string, VacationRange[]>>(vacations);
+  const relaxNoticeRef = useRef<Record<string, boolean>>(relaxNotice);
+
+  useEffect(() => {
+    usersRef.current = safeUsers;
+    logsRef.current = safeLogs;
+    pendingRef.current = pendingJustifications;
+    vacationsRef.current = vacations;
+    relaxNoticeRef.current = relaxNotice;
+  }, [safeUsers, safeLogs, pendingJustifications, vacations, relaxNotice]);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   useEffect(() => {
     if (!Array.isArray(users)) {
@@ -174,6 +170,18 @@ export default function App() {
       setLogs([]);
     }
   }, [logs, setLogs]);
+
+  useEffect(() => {
+    if (safeUsers.length === 0) return;
+    if (safeUsers.some(u => u.isMaster)) return;
+    const candidate = [...safeUsers].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))[0];
+    if (!candidate) return;
+    setUsers(prev => prev.map(u => (
+      u.id === candidate.id
+        ? { ...u, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() }
+        : u
+    )));
+  }, [safeUsers, setUsers]);
 
   useEffect(() => {
     let mounted = true;
@@ -230,33 +238,58 @@ export default function App() {
   }, [currentUser?.id, currentUser?.emailVerified]);
 
   useEffect(() => {
-    if (sessionRestoredRef.current || safeUsers.length === 0) return;
-    const sessionId = localStorage.getItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
-    if (!sessionId) return;
-    const user = safeUsers.find(u => u.id === sessionId);
-    sessionRestoredRef.current = true;
-    if (user) {
-      const firebaseUser = getFirebaseCurrentUser();
-      if (firebaseUser && firebaseUser.emailVerified && firebaseUser.email?.toLowerCase() === user.email.toLowerCase()) {
-        setLocalEmailVerified(user.id, true);
-        setCurrentUser({ ...user, emailVerified: true });
-        setView('dashboard');
-      } else if (firebaseUser && !firebaseUser.emailVerified) {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+    const auth = getFirebaseAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
         setCurrentUser(null);
-        setLocalEmailVerified(user.id, false);
-        openVerifyEmailView(user.id, user.email);
+        if (!['login', 'verify-email', 'register'].includes(viewRef.current)) {
+          setView('login');
+        }
+        return;
+      }
+
+      if (!firebaseUser.emailVerified) {
+        const localUser = usersRef.current.find(u => u.email.trim().toLowerCase() === (firebaseUser.email ?? '').toLowerCase());
+        if (localUser) {
+          setLocalEmailVerified(localUser.id, false);
+          openVerifyEmailView(localUser.id, localUser.email);
+        } else if (firebaseUser.email) {
+          openVerifyEmailView(null, firebaseUser.email);
+        }
         setVerifyEmailNotice({
           type: 'error',
           text: 'Seu e-mail ainda não foi verificado. Confirme para continuar.',
         });
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
+        return;
       }
-    } else {
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
-    }
-  }, [safeUsers]);
+
+      const data = await getKronusData();
+      if (data) {
+        const merged = mergeKronusData(
+          {
+            users: usersRef.current,
+            logs: logsRef.current,
+            pendingJustifications: pendingRef.current,
+            vacations: vacationsRef.current,
+            relaxNotice: relaxNoticeRef.current,
+          },
+          data
+        );
+        setUsers(merged.users);
+        setLogs(merged.logs);
+        setPendingJustifications(merged.pendingJustifications);
+        setVacations(merged.vacations);
+        setRelaxNotice(merged.relaxNotice);
+        const user = merged.users.find(u => u.email.trim().toLowerCase() === (firebaseUser.email ?? '').toLowerCase());
+        if (user) {
+          setLocalEmailVerified(user.id, true);
+          setCurrentUser({ ...user, emailVerified: true });
+          setView('dashboard');
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!firestoreLoadedRef.current) return;
@@ -289,7 +322,6 @@ export default function App() {
       setCurrentUser(null);
       setView('login');
       setRegisterEmailNotice(null);
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
       return;
     }
     if (updated !== currentUser) {
@@ -464,12 +496,6 @@ export default function App() {
     const localUser = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail);
     const localPinMatches = !!localUser && localUser.pin === pin;
 
-    if (rememberMe) {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL, loginEmail.trim());
-    } else {
-      localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
-    }
-
     const password = buildAuthPassword(pin);
     let firebaseUser;
     try {
@@ -537,7 +563,6 @@ export default function App() {
     }
 
     setLocalEmailVerified(userToLogin.id, true);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, userToLogin.id);
     setCurrentUser({ ...userToLogin, emailVerified: true });
     setView('dashboard');
     setPin('');
@@ -699,7 +724,6 @@ export default function App() {
       updatedAt: Date.now(),
     };
     setUsers(prev => prev.map(u => u.id === user.id ? verifiedUser : u));
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, user.id);
     setCurrentUser(verifiedUser);
     setView('dashboard');
     setVerifyEmailUserId(null);
@@ -962,9 +986,36 @@ export default function App() {
 
   const handleRequestDeleteUser = (user: User) => {
     if (!currentUser?.isMaster) return;
+    setAdminRemoveByCpfMessage(null);
     setConfirmDeleteUser({ userId: user.id, userName: user.name });
     setDeleteUserPin('');
     setDeleteUserPinError('');
+  };
+
+  const handleRequestDeleteUserByCpf = (cpfInput: string) => {
+    setAdminRemoveByCpfMessage(null);
+    if (!currentUser?.isMaster) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Apenas o administrador master pode remover usuários.' });
+      return;
+    }
+    const normalized = cpfDigits(cpfInput);
+    if (normalized.length !== 11) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Digite um CPF válido com 11 dígitos.' });
+      return;
+    }
+    const user = safeUsers.find(u => cpfDigits(u.cpf) === normalized);
+    if (!user) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'CPF não encontrado.' });
+      return;
+    }
+    if (user.id === currentUser.id) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Você não pode excluir seu próprio usuário.' });
+      return;
+    }
+    setConfirmDeleteUser({ userId: user.id, userName: user.name });
+    setDeleteUserPin('');
+    setDeleteUserPinError('');
+    setAdminRemoveByCpfMessage({ type: 'success', text: `Usuário ${user.name} encontrado. Confirme com seu PIN para excluir.` });
   };
 
   const handleConfirmDeleteUser = () => {
@@ -977,6 +1028,7 @@ export default function App() {
     setConfirmDeleteUser(null);
     setDeleteUserPin('');
     setDeleteUserPinError('');
+    setAdminRemoveByCpfMessage({ type: 'success', text: `Usuário ${confirmDeleteUser.userName} excluído com sucesso.` });
   };
 
   const canManageLogsForUser = (actor: User | null, targetUserId: string): boolean => {
@@ -1027,8 +1079,6 @@ export default function App() {
           setLoginEmail={setLoginEmail}
           pin={pin}
           setPin={setPin}
-          rememberMe={rememberMe}
-          setRememberMe={setRememberMe}
           authError={authError}
           onLogin={handleLogin}
           onGoToRegister={() => {
@@ -1084,7 +1134,6 @@ export default function App() {
             sendVerificationEmail();
             return;
           }
-          localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, userWithNewPin.id);
           setCurrentUser(userWithNewPin);
           setView('dashboard');
         }}
@@ -1125,7 +1174,6 @@ export default function App() {
         onNavigate={(v) => setView(v)}
         onLogout={() => {
           signOutFirebase();
-          localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
           setRegisterEmailNotice(null);
@@ -1142,7 +1190,6 @@ export default function App() {
         onNavigate={(v) => setView(v)}
         onLogout={() => {
           signOutFirebase();
-          localStorage.removeItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID);
           setCurrentUser(null);
           setView('login');
           setRegisterEmailNotice(null);
@@ -1202,6 +1249,8 @@ export default function App() {
             onPromoteToMaster={currentUser?.isMaster ? promoteToMaster : undefined}
             onDemoteToUser={currentUser?.isMaster ? demoteToUser : undefined}
             onRequestDeleteUser={handleRequestDeleteUser}
+            onRequestDeleteByCpf={handleRequestDeleteUserByCpf}
+            removeByCpfMessage={adminRemoveByCpfMessage}
             onConfirmDeleteLog={openConfirmDeleteLog}
             onUpdateUser={updateUser}
             onUpdateLog={updateLog}
@@ -1285,7 +1334,7 @@ export default function App() {
         setPin={setDeleteUserPin}
         error={deleteUserPinError}
         onConfirm={handleConfirmDeleteUser}
-        onCancel={() => { setConfirmDeleteUser(null); setDeleteUserPin(''); setDeleteUserPinError(''); }}
+        onCancel={() => { setConfirmDeleteUser(null); setDeleteUserPin(''); setDeleteUserPinError(''); setAdminRemoveByCpfMessage(null); }}
       />
     </div>
   );

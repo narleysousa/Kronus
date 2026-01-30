@@ -19,6 +19,8 @@ interface AdminPanelProps {
   onUpdateUser: (userId: string, updates: Partial<User>) => void;
   onUpdateLog: (logId: string, updates: Partial<PunchLog>) => void;
   onAddLog: (log: PunchLog) => void;
+  onRequestDeleteByCpf?: (cpf: string) => void;
+  removeByCpfMessage?: { type: 'success' | 'error'; text: string } | null;
 }
 
 interface UserDraft {
@@ -120,6 +122,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateUser,
   onUpdateLog,
   onAddLog,
+  onRequestDeleteByCpf,
+  removeByCpfMessage,
 }) => {
   const bankByUserId = useMemo(() => {
     if (!currentUser?.isMaster) return {};
@@ -139,6 +143,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [logDrafts, setLogDrafts] = useState<Record<string, LogDraft>>({});
   const [newLogDrafts, setNewLogDrafts] = useState<Record<string, LogDraft>>({});
   const [pinVisible, setPinVisible] = useState(false); // padrão: sempre ocultar
+  const [removeCpfRaw, setRemoveCpfRaw] = useState('');
+
+  const handleRemoveCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRemoveCpfRaw(e.target.value.replace(/\D/g, '').slice(0, 11));
+  };
 
   const startEditUser = (user: User) => {
     if (user.isMaster && !currentUser?.isMaster) return;
@@ -301,6 +310,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           Modo Administrador
         </div>
       </header>
+
+      {currentUser?.isMaster && onRequestDeleteByCpf && (
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <h3 className="font-bold text-slate-800 mb-2">Remover usuário por CPF</h3>
+          <p className="text-sm text-slate-500 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[220px]">
+              <label htmlFor="admin-remove-cpf" className="text-xs font-semibold text-slate-500 uppercase">CPF</label>
+              <input
+                id="admin-remove-cpf"
+                type="text"
+                value={formatCpfDisplay(removeCpfRaw)}
+                onChange={handleRemoveCpfChange}
+                placeholder="000.000.000-00"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-rose-500 focus:outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => onRequestDeleteByCpf(removeCpfRaw)}
+              disabled={removeCpfRaw.length < 11}
+              className="px-4 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Buscar e excluir
+            </button>
+          </div>
+          {removeByCpfMessage && (
+            <p
+              className={`mt-3 text-sm font-medium ${
+                removeByCpfMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+              role="alert"
+            >
+              {removeByCpfMessage.text}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
         {users.map(user => {
