@@ -2,11 +2,10 @@ import React from 'react';
 import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import { KronusLogo } from '../constants';
 import { PinInput } from './PinInput';
-import { formatCpfDisplay, cpfDigits } from '../utils/cpfMask';
 
 interface LoginViewProps {
-  loginCpf: string;
-  setLoginCpf: (v: string) => void;
+  loginEmail: string;
+  setLoginEmail: (v: string) => void;
   pin: string;
   setPin: (v: string) => void;
   rememberMe: boolean;
@@ -17,9 +16,14 @@ interface LoginViewProps {
   onForgotPassword: () => void;
 }
 
+const isEmailValid = (email: string): boolean => {
+  const trimmed = email.trim();
+  return trimmed.length >= 5 && trimmed.includes('@') && trimmed.includes('.');
+};
+
 export const LoginView: React.FC<LoginViewProps> = ({
-  loginCpf,
-  setLoginCpf,
+  loginEmail,
+  setLoginEmail,
   pin,
   setPin,
   rememberMe,
@@ -29,12 +33,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onGoToRegister,
   onForgotPassword,
 }) => {
-  const displayCpf = formatCpfDisplay(loginCpf);
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
-    setLoginCpf(raw);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
@@ -48,14 +46,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         <div className="p-8 space-y-6">
           <div>
-            <label htmlFor="login-cpf" className="block text-sm font-semibold text-slate-700 mb-2">CPF</label>
+            <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 mb-2">E-mail</label>
             <input
-              id="login-cpf"
-              type="text"
-              placeholder="000.000.000-00"
+              id="login-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="seu@email.com"
               className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none transition-colors"
-              value={displayCpf}
-              onChange={handleCpfChange}
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
               aria-describedby={authError ? 'login-error' : undefined}
             />
           </div>
@@ -73,7 +73,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               aria-describedby="remember-hint"
             />
-            <span id="remember-hint" className="text-sm font-medium text-slate-600">Lembrar CPF neste dispositivo</span>
+            <span id="remember-hint" className="text-sm font-medium text-slate-600">Lembrar e-mail neste dispositivo</span>
           </label>
 
           <button
@@ -94,7 +94,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <button
             type="button"
             onClick={onLogin}
-            disabled={pin.length < 4 || cpfDigits(loginCpf).length < 11}
+            disabled={pin.length < 4 || !isEmailValid(loginEmail)}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
           >
             <LogIn size={20} aria-hidden />

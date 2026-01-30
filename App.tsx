@@ -104,9 +104,9 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [view, setView] = useState<AppView>('login');
   const [pin, setPin] = useState('');
-  const [loginCpf, setLoginCpf] = useState(() => {
+  const [loginEmail, setLoginEmail] = useState(() => {
     try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
       return saved ? saved : '';
     } catch {
       return '';
@@ -114,7 +114,7 @@ export default function App() {
   });
   const [rememberMe, setRememberMe] = useState(() => {
     try {
-      return !!localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
+      return !!localStorage.getItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
     } catch {
       return false;
     }
@@ -243,6 +243,12 @@ export default function App() {
     }
   }, [safeUsers, currentUser]);
 
+  useEffect(() => {
+    if (view === 'dashboard' && registerEmailNotice?.text?.includes('não configurado')) {
+      setRegisterEmailNotice(null);
+    }
+  }, [view, registerEmailNotice?.text]);
+
   const userLogs = useMemo(() => {
     if (!currentUser) return [];
     return safeLogs.filter(l => l.userId === currentUser.id).sort((a, b) => b.timestamp - a.timestamp);
@@ -360,21 +366,21 @@ export default function App() {
   }, [userLogs, userVacations]);
 
   const handleLogin = () => {
-    const normalizedCpf = cpfDigits(loginCpf);
-    const user = safeUsers.find(u => cpfDigits(u.cpf) === normalizedCpf && u.pin === pin);
+    const normalizedEmail = loginEmail.trim().toLowerCase();
+    const user = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail && u.pin === pin);
     if (user) {
       setAuthError('');
       if (rememberMe) {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF, cpfDigits(loginCpf));
+        localStorage.setItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL, loginEmail.trim());
       } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_CPF);
+        localStorage.removeItem(LOCAL_STORAGE_KEYS.REMEMBER_EMAIL);
       }
       localStorage.setItem(LOCAL_STORAGE_KEYS.SESSION_USER_ID, user.id);
       setCurrentUser(user);
       setView('dashboard');
       setPin('');
     } else {
-      setAuthError('CPF ou PIN incorretos');
+      setAuthError('E-mail ou PIN incorretos');
     }
   };
 
@@ -441,12 +447,13 @@ export default function App() {
         type: 'success',
         text: `E-mail de confirmação enviado para ${maskEmail(newUser.email)}.`,
       });
-    } else {
+    } else if (emailResult.error && !emailResult.error.includes('não configurado')) {
       setRegisterEmailNotice({
         type: 'error',
-        text: emailResult.error ?? 'Não foi possível enviar o e-mail de confirmação.',
+        text: emailResult.error,
       });
     }
+    // Quando o e-mail não está configurado (VITE_EMAILJS_*), não exibe aviso no dashboard
   };
 
   const handleRemoveByCpf = (cpfInput: string, pinInput: string): void => {
@@ -750,8 +757,8 @@ export default function App() {
     return (
       <>
         <LoginView
-          loginCpf={loginCpf}
-          setLoginCpf={setLoginCpf}
+          loginEmail={loginEmail}
+          setLoginEmail={setLoginEmail}
           pin={pin}
           setPin={setPin}
           rememberMe={rememberMe}

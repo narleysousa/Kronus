@@ -40,6 +40,7 @@ export const LOCAL_STORAGE_KEYS = {
   USERS: 'kronus_users',
   LOGS: 'kronus_logs',
   REMEMBER_CPF: 'kronus_remember_cpf',
+  REMEMBER_EMAIL: 'kronus_remember_email',
   PENDING_JUSTIFICATIONS: 'kronus_pending_justifications',
   VACATIONS: 'kronus_vacations',
   RELAX_NOTICE: 'kronus_relax_notice',
