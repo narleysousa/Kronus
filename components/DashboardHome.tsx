@@ -224,7 +224,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </button>
             {lastWorkLogType === 'OUT' && lastSessionDurationMs !== null && (
               <p className="text-indigo-100 text-sm font-semibold mt-3">
-                Você codou {formatDurationMs(lastSessionDurationMs)} na última vez.
+                Você trabalhou {formatDurationMs(lastSessionDurationMs)} na última vez.
               </p>
             )}
           </div>
