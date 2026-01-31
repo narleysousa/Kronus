@@ -1058,6 +1058,11 @@ export default function App() {
       delete next[userId];
       return next;
     });
+    setHolidays(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
     setRelaxNotice(prev => {
       const next = { ...prev };
       delete next[userId];
@@ -1101,7 +1106,9 @@ export default function App() {
 
   const handleConfirmDeleteUser = () => {
     if (!confirmDeleteUser || !currentUser || currentUser.role !== UserRole.ADMIN) return;
-    if (deleteUserPin !== currentUser.pin) {
+    const pinStr = String(deleteUserPin ?? '').trim();
+    const currentPinStr = String(currentUser.pin ?? '').trim();
+    if (pinStr.length !== 4 || pinStr !== currentPinStr) {
       setDeleteUserPinError('PIN incorreto. Tente novamente.');
       return;
     }

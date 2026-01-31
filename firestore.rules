@@ -19,11 +19,11 @@ service cloud.firestore {
             && data.logs.size() <= 100000;
       }
 
-      // Leitura: somente usuários autenticados com e-mail verificado (Email/Password)
-      allow read: if request.auth != null && request.auth.token.email_verified == true;
+      // Leitura: qualquer usuário autenticado (e-mail verificado não exigido para cadastro/exclusão funcionar)
+      allow read: if request.auth != null;
 
-      // Escrita: só se o payload tiver a estrutura válida do Kronus e e-mail verificado
-      allow write: if request.auth != null && request.auth.token.email_verified == true && isValidKronusData();
+      // Escrita: usuário autenticado + payload com estrutura válida do Kronus
+      allow write: if request.auth != null && isValidKronusData();
     }
 
     // Bloqueia qualquer outro path no Firestore (segurança)
