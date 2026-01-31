@@ -106,12 +106,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
               <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
             {userLogs.map(log => {
               const typeInfo = getLogTypeInfo(log);
               return (
-                <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-bold text-slate-800">
+                <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-slate-100">
                     {new Date(log.timestamp).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-6 py-4">
@@ -120,17 +120,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
                       {typeInfo.label}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 font-medium">
+                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
                     <span>{formatLogTime(log)}</span>
                     {durationMap[log.id] !== undefined && (
-                      <span className="ml-2 text-emerald-600 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                      <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
                       type="button"
                       onClick={() => onConfirmDelete(log.id, log)}
-                      className="p-2 text-slate-300 hover:text-rose-500 transition-colors rounded-lg"
+                      className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
                       aria-label={`Excluir registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
                     >
                       <Trash2 size={18} />
@@ -144,16 +144,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
       </div>
 
       {/* Mobile: cards */}
-      <div className="md:hidden divide-y divide-slate-100">
+      <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
         {userLogs.map(log => {
           const typeInfo = getLogTypeInfo(log);
           return (
             <div key={log.id} className="p-4 flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-800">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
                   {new Date(log.timestamp).toLocaleDateString('pt-BR')} · {formatLogTime(log, false)}
                   {durationMap[log.id] !== undefined && (
-                    <span className="ml-2 text-emerald-600 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                    <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
                   )}
                 </p>
                 <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
@@ -163,7 +163,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
               <button
                 type="button"
                 onClick={() => onConfirmDelete(log.id, log)}
-                className="p-2 text-slate-300 hover:text-rose-500 rounded-lg shrink-0"
+                className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg shrink-0"
                 aria-label="Excluir registro"
               >
                 <Trash2 size={18} />
@@ -175,10 +175,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
 
       {userLogs.length === 0 && (
         <div className="py-20 text-center">
-          <div className="inline-flex items-center justify-center p-4 bg-slate-50 rounded-full text-slate-300 mb-4">
+          <div className="inline-flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-700 rounded-full text-slate-300 dark:text-slate-500 mb-4">
             <History size={48} aria-hidden />
           </div>
-          <p className="text-slate-400 font-medium">Você ainda não possui batidas registradas.</p>
+          <p className="text-slate-400 dark:text-slate-500 font-medium">Você ainda não possui batidas registradas.</p>
         </div>
       )}
     </div>

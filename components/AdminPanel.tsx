@@ -63,13 +63,13 @@ const buildEndTime = (date: string, time: string) => {
 
 const getLogTypeInfo = (log: PunchLog) => {
   if (log.type === 'IN') {
-    return { label: 'Entrada', badgeClass: 'bg-emerald-100 text-emerald-700' };
+    return { label: 'Entrada', badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' };
   }
   if (log.type === 'OUT') {
-    return { label: 'Saída', badgeClass: 'bg-rose-100 text-rose-700' };
+    return { label: 'Saída', badgeClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' };
   }
   const label = log.justificationKind === 'missed' ? 'Justificado' : 'Compromisso pessoal';
-  return { label, badgeClass: 'bg-amber-100 text-amber-700' };
+  return { label, badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' };
 };
 
 const createUserDraft = (user: User): UserDraft => ({
@@ -303,36 +303,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Painel Administrativo</h2>
-          <p className="text-slate-500">Gestão de colaboradores e auditoria de registros.</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Painel Administrativo</h2>
+          <p className="text-slate-500 dark:text-slate-400">Gestão de colaboradores e auditoria de registros.</p>
         </div>
-        <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-xl border border-amber-200 flex items-center gap-2 text-sm font-bold">
+        <div className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-2 text-sm font-bold">
           <ShieldCheck size={18} aria-hidden />
           Modo Administrador
         </div>
       </header>
 
       {currentUser?.role === UserRole.ADMIN && onRequestDeleteByCpf && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-2">Remover usuário por CPF</h3>
-          <p className="text-sm text-slate-500 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Remover usuário por CPF</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
-              <label htmlFor="admin-remove-cpf" className="text-xs font-semibold text-slate-500 uppercase">CPF</label>
+              <label htmlFor="admin-remove-cpf" className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">CPF</label>
               <input
                 id="admin-remove-cpf"
                 type="text"
                 value={formatCpfDisplay(removeCpfRaw)}
                 onChange={handleRemoveCpfChange}
                 placeholder="000.000.000-00"
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-rose-500 focus:outline-none"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-rose-500 dark:focus:border-rose-400 focus:outline-none"
               />
             </div>
             <button
               type="button"
               onClick={() => onRequestDeleteByCpf(removeCpfRaw)}
               disabled={removeCpfRaw.length < 11}
-              className="px-4 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Buscar e excluir
             </button>
@@ -340,7 +340,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           {removeByCpfMessage && (
             <p
               className={`mt-3 text-sm font-medium ${
-                removeByCpfMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'
+                removeByCpfMessage.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
               }`}
               role="alert"
             >
@@ -364,14 +364,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const canEditOwnPin = currentUser?.id === user.id;
 
           return (
-            <article key={user.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:border-indigo-100 transition-all">
+            <article key={user.id} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-indigo-100 dark:hover:border-indigo-800 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-indigo-100" aria-hidden>
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-indigo-100 dark:shadow-indigo-900/30" aria-hidden>
                     {user.name.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 flex-wrap">
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2 flex-wrap">
                       {user.name}
                       {isUserAdmin ? (
                         <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" title="Acesso total">Master</span>
@@ -380,10 +380,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       )}
                     </h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                      <span className="text-sm text-slate-500 flex items-center gap-1"><Users size={14} aria-hidden /> {user.position}</span>
-                      <span className="text-sm text-slate-500 flex items-center gap-1"><Calendar size={14} aria-hidden /> {user.dailyHours}h/dia</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1"><Users size={14} aria-hidden /> {user.position}</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1"><Calendar size={14} aria-hidden /> {user.dailyHours}h/dia</span>
                       {currentUser?.isMaster && typeof bankByUserId[user.id] === 'number' && (
-                        <span className={`text-sm font-medium flex items-center gap-1 ${bankByUserId[user.id] >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} title="Banco de horas">
+                        <span className={`text-sm font-medium flex items-center gap-1 ${bankByUserId[user.id] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} title="Banco de horas">
                           <Clock size={14} aria-hidden />
                           Banco: {bankByUserId[user.id] >= 0 ? '+' : ''}{formatHoursToHms(bankByUserId[user.id])}
                         </span>
@@ -404,7 +404,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     }}
                     disabled={!canEditUser}
                     title={!canEditUser ? 'Somente administrador master pode editar este usuário.' : undefined}
-                    className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-100 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl text-sm font-bold border border-indigo-100 dark:border-indigo-800 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Edit2 size={16} aria-hidden />
                     {isEditingUser ? 'Fechar Edição' : 'Editar Usuário'}
@@ -421,10 +421,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           setEditingLogId(null);
                         }
                       }}
-                      className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-2"
                     >
                       <Edit2 size={16} aria-hidden />
                       {editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}
+                    </button>
+                  )}
+                  {canManageLogsOf(currentUser, user) && (
+                    <button
+                      type="button"
+                      onClick={() => exportHoursToSpreadsheet(userLogs, { userName: user.name, includeUserColumn: true })}
+                      disabled={userLogs.length === 0}
+                      className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold border border-emerald-100 dark:border-emerald-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Exportar registros deste usuário para planilha (CSV)"
+                    >
+                      <FileSpreadsheet size={16} aria-hidden />
+                      Exportar planilha
                     </button>
                   )}
                   {/* Somente Master pode promover usuário comum a Master */}
@@ -443,7 +455,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onDemoteToUser(user.id)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
+                      className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-2"
                       title="Rebaixar a usuário comum"
                     >
                       <Users size={16} aria-hidden />
@@ -465,43 +477,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               {isEditingUser && (
-                <div className="mt-8 pt-8 border-t border-slate-100 space-y-6 animate-in slide-in-from-top-2">
-                  <h5 className="font-bold text-slate-700 text-sm uppercase tracking-wider">Editar dados do colaborador</h5>
+                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700 space-y-6 animate-in slide-in-from-top-2">
+                  <h5 className="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase tracking-wider">Editar dados do colaborador</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">Nome</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Nome</label>
                       <input
                         value={draft.name}
                         onChange={(e) => updateUserDraft(user.id, { name: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">E-mail</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">E-mail</label>
                       <input
                         type="email"
                         value={draft.email}
                         onChange={(e) => updateUserDraft(user.id, { email: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">CPF</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">CPF</label>
                       <input
                         value={formatCpfDisplay(draft.cpf)}
                         onChange={(e) => updateUserDraft(user.id, { cpf: cpfDigits(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                     {/* PIN só pode ser alterado pelo próprio usuário */}
                     {!canEditOwnPin ? (
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
-                        <p className="text-sm text-slate-500 italic">O PIN só pode ser alterado pelo próprio usuário (via recuperação de senha).</p>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">PIN (4 dígitos)</label>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 italic">O PIN só pode ser alterado pelo próprio usuário (via recuperação de senha).</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase">PIN (4 dígitos)</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">PIN (4 dígitos)</label>
                         <div className="flex gap-2 items-center">
                           <input
                             type={pinVisible ? 'text' : 'password'}
@@ -509,12 +521,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             onChange={(e) => updateUserDraft(user.id, { pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                             inputMode="numeric"
                             maxLength={4}
-                            className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                            className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => setPinVisible(v => !v)}
-                            className="p-2.5 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+                            className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shrink-0"
                             aria-label={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
                             title={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
                           >
@@ -524,15 +536,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     )}
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">Cargo</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Cargo</label>
                       <input
                         value={draft.position}
                         onChange={(e) => updateUserDraft(user.id, { position: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">Horas diárias</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Horas diárias</label>
                       <input
                         type="number"
                         step="0.5"
@@ -540,11 +552,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         max="24"
                         value={draft.dailyHours}
                         onChange={(e) => updateUserDraft(user.id, { dailyHours: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-500 uppercase">Perfil</label>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Perfil</label>
                       <select
                         value={draft.role}
                         onChange={(e) => updateUserDraft(user.id, { role: e.target.value as UserRole })}
@@ -561,17 +573,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    <span className="text-xs font-semibold text-slate-500 uppercase">Dias de trabalho</span>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Dias de trabalho</span>
                     <div className="flex flex-wrap gap-2">
                       {WEEK_DAYS.map(day => (
-                        <label key={day.id} className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-indigo-50 transition-colors has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-300">
+                        <label key={day.id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-300 dark:has-[:checked]:bg-indigo-900/40 dark:has-[:checked]:border-indigo-600">
                           <input
                             type="checkbox"
                             checked={draft.workDays.includes(day.id)}
                             onChange={() => toggleWorkDay(user.id, day.id)}
                             className="sr-only"
                           />
-                          <span className="text-sm font-medium">{day.id}</span>
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{day.id}</span>
                         </label>
                       ))}
                     </div>
@@ -581,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingUserId(null)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-bold border border-slate-200 transition-all flex items-center gap-2"
+                      className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-2"
                     >
                       <X size={16} aria-hidden />
                       Cancelar
@@ -600,7 +612,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
 
               {editingUserLogs === user.id && (
-                <div className="mt-8 pt-8 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2">
+                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700 space-y-4 animate-in slide-in-from-top-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h5 className="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase tracking-wider">Registros de {user.name}</h5>
                     <div className="flex flex-wrap items-center gap-2">
@@ -624,44 +636,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Adicionar registro manual</p>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">Adicionar registro manual</p>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500">Data</label>
+                        <label className="text-xs text-slate-500 dark:text-slate-400">Data</label>
                         <input
                           type="date"
                           value={newLogDraft.date}
                           onChange={(e) => updateNewLogDraft(user.id, { date: e.target.value })}
-                          className="px-3 py-2 rounded-lg border border-slate-200"
+                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500">Hora</label>
+                        <label className="text-xs text-slate-500 dark:text-slate-400">Hora</label>
                         <input
                           type="time"
                           value={newLogDraft.time}
                           onChange={(e) => updateNewLogDraft(user.id, { time: e.target.value })}
-                          className="px-3 py-2 rounded-lg border border-slate-200"
+                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                         />
                       </div>
                       {newLogDraft.type === 'JUSTIFIED' && (
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-slate-500">Até</label>
+                          <label className="text-xs text-slate-500 dark:text-slate-400">Até</label>
                           <input
                             type="time"
                             value={newLogDraft.endTime || ''}
                             onChange={(e) => updateNewLogDraft(user.id, { endTime: e.target.value })}
-                            className="px-3 py-2 rounded-lg border border-slate-200"
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                           />
                         </div>
                       )}
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500">Tipo</label>
+                        <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
                         <select
                           value={newLogDraft.type}
                           onChange={(e) => updateNewLogDraft(user.id, { type: e.target.value as PunchType })}
-                          className="px-3 py-2 rounded-lg border border-slate-200"
+                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                         >
                           <option value="IN">Entrada</option>
                           <option value="OUT">Saída</option>
@@ -691,33 +703,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         : new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
                       return (
-                        <div key={log.id} className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-slate-100 text-sm">
+                        <div key={log.id} className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 text-sm">
                           {isEditingLog ? (
                             <div className="flex flex-wrap items-center gap-3">
                               <input
                                 type="date"
                                 value={draftLog.date}
                                 onChange={(e) => updateLogDraft(log.id, { date: e.target.value })}
-                                className="px-3 py-2 rounded-lg border border-slate-200"
+                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                               />
                               <input
                                 type="time"
                                 value={draftLog.time}
                                 onChange={(e) => updateLogDraft(log.id, { time: e.target.value })}
-                                className="px-3 py-2 rounded-lg border border-slate-200"
+                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                               />
                               {draftLog.type === 'JUSTIFIED' && (
                                 <input
                                   type="time"
                                   value={draftLog.endTime || ''}
                                   onChange={(e) => updateLogDraft(log.id, { endTime: e.target.value })}
-                                  className="px-3 py-2 rounded-lg border border-slate-200"
+                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                                 />
                               )}
                               <select
                                 value={draftLog.type}
                                 onChange={(e) => updateLogDraft(log.id, { type: e.target.value as PunchType })}
-                                className="px-3 py-2 rounded-lg border border-slate-200"
+                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                               >
                                 <option value="IN">Entrada</option>
                                 <option value="OUT">Saída</option>
@@ -735,7 +747,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setEditingLogId(null)}
-                                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold"
+                                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-lg text-xs font-bold"
                                 >
                                   Cancelar
                                 </button>
@@ -744,17 +756,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           ) : (
                             <div className="flex items-center justify-between gap-4 flex-wrap">
                               <div className="flex items-center gap-4 flex-wrap">
-                                <span className="font-bold text-slate-800">{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100">{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
                                 <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded-full ${typeInfo.badgeClass}`}>
                                   {typeInfo.label}
                                 </span>
-                                <span className="text-slate-500">{logTimeLabel}</span>
+                                <span className="text-slate-500 dark:text-slate-400">{logTimeLabel}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => startEditLog(log)}
-                                  className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors shrink-0"
+                                  className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 p-2 rounded-lg transition-colors shrink-0"
                                   aria-label="Editar registro"
                                 >
                                   <Edit2 size={16} />
@@ -762,7 +774,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onConfirmDeleteLog(log.id)}
-                                  className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors shrink-0"
+                                  className="text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-lg transition-colors shrink-0"
                                   aria-label="Excluir registro"
                                 >
                                   <Trash2 size={16} />
@@ -776,7 +788,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     {userLogs.length === 0 && (
                       <div className="text-center py-8">
-                        <p className="text-slate-400 italic">Nenhum registro encontrado para este usuário.</p>
+                        <p className="text-slate-400 dark:text-slate-500 italic">Nenhum registro encontrado para este usuário.</p>
                       </div>
                     )}
                   </div>

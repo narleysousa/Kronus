@@ -107,8 +107,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       <div
         className={`flex items-start justify-between gap-3 rounded-2xl border p-4 text-sm font-semibold ${
           emailNotice.type === 'success'
-            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-            : 'bg-amber-50 border-amber-100 text-amber-700'
+            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800 text-amber-700 dark:text-amber-300'
         }`}
         role="status"
       >
@@ -170,16 +170,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     </header>
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 bg-indigo-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+      <div className="lg:col-span-2 bg-indigo-600 dark:bg-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/30">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="text-center md:text-left">
-            <div className="inline-flex items-center gap-2 bg-indigo-500/30 px-3 py-1 rounded-full text-indigo-100 text-xs font-bold uppercase tracking-wider mb-4 border border-indigo-400/30">
+            <div className="inline-flex items-center gap-2 bg-indigo-500/30 dark:bg-indigo-900/40 px-3 py-1 rounded-full text-indigo-100 dark:text-indigo-200 text-xs font-bold uppercase tracking-wider mb-4 border border-indigo-400/30 dark:border-indigo-500/40">
               Status Atual
             </div>
             <h3 className="text-4xl font-bold mb-2">
               {isClockedIn ? 'Você está trabalhando' : 'Ponto não batido'}
             </h3>
-            <p className="text-indigo-100 text-lg opacity-80">
+            <p className="text-indigo-100 dark:text-indigo-200 text-lg opacity-90">
               {isClockedIn
                 ? `Início do turno às ${lastClockInTime ? new Date(lastClockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}`
                 : 'Bata o ponto para iniciar sua jornada de hoje.'}
@@ -223,7 +223,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               <span className="font-black text-xl">{isClockedIn ? 'SAÍDA' : 'ENTRADA'}</span>
             </button>
             {lastWorkLogType === 'OUT' && lastSessionDurationMs !== null && (
-              <p className="text-indigo-100 text-sm font-semibold mt-3">
+              <p className="text-indigo-100 dark:text-indigo-200 text-sm font-semibold mt-3">
                 Você trabalhou {formatDurationMs(lastSessionDurationMs)} na última vez.
               </p>
             )}
@@ -234,68 +234,68 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-indigo-400/20 rounded-full blur-2xl" aria-hidden />
       </div>
 
-      <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h4 className="font-bold text-slate-800">Banco de Horas</h4>
+            <h4 className="font-bold text-slate-800 dark:text-slate-100">Banco de Horas</h4>
             <button
               type="button"
               onClick={onOpenProductivity}
-              className={`p-2 rounded-lg transition-colors hover:opacity-90 ${bankOfHours >= 0 ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+              className={`p-2 rounded-lg transition-colors hover:opacity-90 ${bankOfHours >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30'}`}
               aria-label="Abrir dashboard de produtividade"
             >
               <TrendingUp size={20} />
             </button>
           </div>
           <div className="space-y-1">
-            <span className={`text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <span className={`text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {bankOfHours >= 0 ? '+' : ''}{formatHoursToHms(bankOfHours)}
             </span>
-            <p className="text-slate-400 text-sm font-medium">Acúmulo total no período</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Acúmulo total no período</p>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-slate-50">
+        <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-700">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-500 font-medium">Meta Diária</span>
-            <span className="text-slate-800 font-bold">{currentUser?.dailyHours}h / dia</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Meta Diária</span>
+            <span className="text-slate-800 dark:text-slate-100 font-bold">{currentUser?.dailyHours}h / dia</span>
           </div>
         </div>
       </div>
     </div>
 
-    <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm" aria-labelledby="resumo-title">
+    <section className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 shadow-sm" aria-labelledby="resumo-title">
       <div className="flex items-center justify-between mb-6">
-        <h4 id="resumo-title" className="font-bold text-slate-800 flex items-center gap-2">
-          <History size={20} className="text-indigo-600" aria-hidden />
+        <h4 id="resumo-title" className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <History size={20} className="text-indigo-600 dark:text-indigo-400" aria-hidden />
           Resumo Diário
         </h4>
-        <button type="button" onClick={onGoToHistory} className="text-indigo-600 text-sm font-bold hover:underline">
+        <button type="button" onClick={onGoToHistory} className="text-indigo-600 dark:text-indigo-400 text-sm font-bold hover:underline">
           Ver tudo
         </button>
       </div>
       <div className="space-y-4">
         {summaries.slice(0, 5).map(s => (
-          <div key={s.date} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div key={s.date} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-600">
             <div>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
               </p>
-              <p className="text-xs text-slate-400 font-medium">{s.logs.length} registros</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">{s.logs.length} registros</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-black text-slate-800">{formatHoursToHms(s.totalHours)}</p>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${s.isGoalMet ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatHoursToHms(s.totalHours)}</p>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${s.isGoalMet ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
                   {s.isGoalMet ? 'Meta OK' : 'Meta Baixa'}
                 </span>
               </div>
-              <ChevronRight size={16} className="text-slate-300" aria-hidden />
+              <ChevronRight size={16} className="text-slate-300 dark:text-slate-500" aria-hidden />
             </div>
           </div>
         ))}
         {summaries.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-slate-400 italic">Nenhum registro encontrado ainda.</p>
+            <p className="text-slate-400 dark:text-slate-500 italic">Nenhum registro encontrado ainda.</p>
           </div>
         )}
       </div>

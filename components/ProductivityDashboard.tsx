@@ -60,23 +60,23 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
   }, [summaries, selectedPeriod.days, today, now]);
 
   const header = (
-    <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+    <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0 bg-white dark:bg-slate-800">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
           <TrendingUp size={24} aria-hidden />
         </div>
         <div>
-          <h2 id="productivity-title" className="text-xl font-bold text-slate-800">Dashboard de Produtividade</h2>
-          <p className="text-sm text-slate-500">Quando as horas foram contabilizadas no banco</p>
+          <h2 id="productivity-title" className="text-xl font-bold text-slate-800 dark:text-slate-100">Dashboard de Produtividade</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Quando as horas foram contabilizadas no banco</p>
         </div>
       </div>
       {embedded ? (
-        <button type="button" onClick={onClose} className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold transition-colors" aria-label="Voltar ao início">
+        <button type="button" onClick={onClose} className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold transition-colors" aria-label="Voltar ao início">
           <ArrowLeft size={20} />
           Voltar ao Início
         </button>
       ) : (
-        <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100" aria-label="Fechar">
+        <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" aria-label="Fechar">
           <X size={24} />
         </button>
       )}
@@ -84,10 +84,10 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
   );
 
   const content = (
-    <div className="p-6 overflow-y-auto flex-1 space-y-6">
+    <div className="p-6 overflow-y-auto flex-1 space-y-6 bg-white dark:bg-slate-800">
 
           <section>
-            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Período</h3>
+            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Período</h3>
             <div className="flex flex-wrap gap-2">
               {PERIODS.map(p => (
                 <button
@@ -96,8 +96,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
                   onClick={() => setSelectedPeriodId(p.id)}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     selectedPeriodId === p.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-indigo-600 dark:bg-indigo-500 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
                   {p.label}
@@ -106,23 +106,23 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
             </div>
           </section>
 
-          <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+          <section className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-600">
             <div className="flex items-center gap-2 mb-2">
-              <Calendar size={20} className="text-indigo-600" aria-hidden />
-              <h3 className="font-bold text-slate-800">Acumulado no período ({selectedPeriod.label})</h3>
+              <Calendar size={20} className="text-indigo-600 dark:text-indigo-400" aria-hidden />
+              <h3 className="font-bold text-slate-800 dark:text-slate-100">Acumulado no período ({selectedPeriod.label})</h3>
             </div>
-            <p className={`text-4xl font-black ${accumulatedTotal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <p className={`text-4xl font-black ${accumulatedTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {accumulatedTotal >= 0 ? '+' : ''}{formatHoursToHms(accumulatedTotal)}
             </p>
-            <p className="text-slate-500 text-sm mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               De {new Date(cutoff + 'T00:00:00').toLocaleDateString('pt-BR')} até {new Date(today + 'T00:00:00').toLocaleDateString('pt-BR')}
             </p>
           </section>
 
           <section>
-            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Por dia (ganho ou perda)</h3>
+            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">Por dia (ganho ou perda)</h3>
             {daysInPeriod.length === 0 ? (
-              <p className="text-slate-400 italic py-4">Nenhum registro neste período.</p>
+              <p className="text-slate-400 dark:text-slate-500 italic py-4">Nenhum registro neste período.</p>
             ) : (
               <ul className="space-y-2">
                 {daysInPeriod.map(s => {
@@ -131,23 +131,23 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
                   return (
                     <li
                       key={s.date}
-                      className="flex items-center justify-between py-3 px-4 rounded-xl bg-slate-50 border border-slate-100"
+                      className="flex items-center justify-between py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600"
                     >
-                      <span className="font-medium text-slate-800">
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
                         {new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR', {
                           weekday: 'short',
                           day: '2-digit',
                           month: 'short',
                         })}
                         {isWeekendDay && (
-                          <span className="ml-1 text-xs font-semibold text-amber-600" title="Hora extra 1,5x">1,5x</span>
+                          <span className="ml-1 text-xs font-semibold text-amber-600 dark:text-amber-400" title="Hora extra 1,5x">1,5x</span>
                         )}
                       </span>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-500">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
                           {formatHoursToHms(s.totalHours)} / {isWeekendDay ? '—' : `${s.expectedHours}h`}
                         </span>
-                        <span className={`font-bold tabular-nums ${contribution >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <span className={`font-bold tabular-nums ${contribution >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                           {contribution >= 0 ? '+' : ''}{formatHoursToHms(contribution)}
                         </span>
                       </div>
@@ -163,7 +163,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
   if (embedded) {
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
           {header}
           {content}
         </div>
@@ -172,8 +172,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="productivity-title">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="productivity-title">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         {header}
         {content}
       </div>
