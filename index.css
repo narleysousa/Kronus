@@ -2,10 +2,12 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: #f8fafc;
+  color: #1e293b;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .dark body {
   background-color: #0f172a;
+  color: #e2e8f0;
 }
