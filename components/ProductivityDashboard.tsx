@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { X, TrendingUp, Calendar, ArrowLeft } from 'lucide-react';
 import type { DaySummary } from '../types';
 import { formatHoursToHms } from '../utils/formatDuration';
+import { getDayContribution, isWeekend } from '../utils/weekend';
 
 const PERIODS: { id: string; label: string; days: number }[] = [
   { id: '1', label: '1 dia', days: 1 },
@@ -51,7 +52,10 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
     const cutoff = cutoffString(now, days);
     const filtered = summaries.filter(s => s.date >= cutoff && s.date <= today);
     const daysInPeriod = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
-    const total = daysInPeriod.reduce((acc, s) => acc + (s.totalHours - s.expectedHours), 0);
+    const total = daysInPeriod.reduce(
+      (acc, s) => acc + getDayContribution(s.date, s.totalHours, s.expectedHours),
+      0
+    );
     return { cutoff, daysInPeriod: daysInPeriod, accumulatedTotal: total };
   }, [summaries, selectedPeriod.days, today, now]);
 
@@ -122,7 +126,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
             ) : (
               <ul className="space-y-2">
                 {daysInPeriod.map(s => {
-                  const delta = s.totalHours - s.expectedHours;
+                  const contribution = getDayContribution(s.date, s.totalHours, s.expectedHours);
+                  const isWeekendDay = isWeekend(s.date);
                   return (
                     <li
                       key={s.date}
@@ -134,13 +139,16 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({ su
                           day: '2-digit',
                           month: 'short',
                         })}
+                        {isWeekendDay && (
+                          <span className="ml-1 text-xs font-semibold text-amber-600" title="Hora extra 1,5x">1,5x</span>
+                        )}
                       </span>
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-slate-500">
-                          {formatHoursToHms(s.totalHours)} / {s.expectedHours}h
+                          {formatHoursToHms(s.totalHours)} / {isWeekendDay ? '—' : `${s.expectedHours}h`}
                         </span>
-                        <span className={`font-bold tabular-nums ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {delta >= 0 ? '+' : ''}{formatHoursToHms(delta)}
+                        <span className={`font-bold tabular-nums ${contribution >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {contribution >= 0 ? '+' : ''}{formatHoursToHms(contribution)}
                         </span>
                       </div>
                     </li>

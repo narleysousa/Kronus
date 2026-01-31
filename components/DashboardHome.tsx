@@ -3,6 +3,7 @@ import { Clock, History, ChevronRight, TrendingUp, Calendar, AlertCircle, CheckC
 import { User, DaySummary } from '../types';
 import { WEEK_DAYS, PUNCH_DEADLINE_HOUR } from '../constants';
 import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
+import { isWeekend } from '../utils/weekend';
 
 function todayDateString(now: number): string {
   const d = new Date(now);
@@ -27,6 +28,7 @@ interface DashboardHomeProps {
   onPunch: () => void;
   onGoToHistory: () => void;
   onOpenPersonalCommitment: () => void;
+  onOpenHoliday: () => void;
   onOpenVacation: () => void;
   onOpenProductivity: () => void;
 }
@@ -44,6 +46,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   onPunch,
   onGoToHistory,
   onOpenPersonalCommitment,
+  onOpenHoliday,
   onOpenVacation,
   onOpenProductivity,
 }) => {
@@ -80,18 +83,23 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     return () => clearInterval(t);
   }, [isClockedIn, isTodayWorkDay, hasPunchedInToday]);
 
-  const { countdownRemainingMs, overtimeMs } = useMemo(() => {
+  const isTodayWeekend = useMemo(() => isWeekend(todayStr), [todayStr]);
+  const { countdownRemainingMs, overtimeMs, isWeekendOvertime } = useMemo(() => {
     if (!isClockedIn || !currentUser || !lastClockInTime) {
-      return { countdownRemainingMs: null as number | null, overtimeMs: null as number | null };
+      return { countdownRemainingMs: null as number | null, overtimeMs: null as number | null, isWeekendOvertime: false };
     }
     const todayHoursSoFar = (todaySummary?.totalHours ?? 0) + (now - lastClockInTime) / 3600000;
+    if (isTodayWeekend) {
+      const weekendOvertimeMs = Math.floor(todayHoursSoFar * 1.5 * 3600) * 1000;
+      return { countdownRemainingMs: null, overtimeMs: weekendOvertimeMs, isWeekendOvertime: true };
+    }
     const goalSeconds = currentUser.dailyHours * 3600;
     const workedSeconds = todayHoursSoFar * 3600;
     const remaining = Math.max(0, Math.floor(goalSeconds - workedSeconds));
     const countdownRemainingMs = remaining * 1000;
     const overtimeMs = workedSeconds >= goalSeconds ? Math.floor(workedSeconds - goalSeconds) * 1000 : null;
-    return { countdownRemainingMs, overtimeMs };
-  }, [isClockedIn, currentUser, lastClockInTime, todaySummary?.totalHours, now]);
+    return { countdownRemainingMs, overtimeMs, isWeekendOvertime: false };
+  }, [isClockedIn, currentUser, lastClockInTime, todaySummary?.totalHours, now, isTodayWeekend]);
 
   return (
   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -126,10 +134,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     )}
     <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
-        <h2 className="text-3xl font-bold text-slate-800">
+        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
           Olá, {currentUser?.name.split(' ')[0]} 👋
         </h2>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-500 dark:text-slate-400 mt-1">
           Hoje é {new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
@@ -137,15 +145,23 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <button
           type="button"
           onClick={onOpenPersonalCommitment}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-100 text-sm font-bold transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-sm font-bold transition-colors"
         >
           <Calendar size={18} aria-hidden />
           Compromissos pessoais
         </button>
         <button
           type="button"
+          onClick={onOpenHoliday}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-sm font-bold transition-colors"
+        >
+          <Calendar size={18} aria-hidden />
+          Feriados
+        </button>
+        <button
+          type="button"
           onClick={onOpenVacation}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 text-sm font-bold transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 text-sm font-bold transition-colors"
         >
           <Calendar size={18} aria-hidden />
           Férias
@@ -175,7 +191,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             )}
             {isClockedIn && overtimeMs !== null && (
               <p className="mt-3 text-emerald-300 font-bold text-xl tabular-nums" aria-live="polite">
-                Horas extras: +{formatDurationMs(overtimeMs)}
+                {isWeekendOvertime ? 'Horas extras (1,5x):' : 'Horas extras:'} +{formatDurationMs(overtimeMs)}
               </p>
             )}
             {!isClockedIn && isTodayWorkDay && !hasPunchedInToday && (

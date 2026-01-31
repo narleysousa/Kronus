@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
-import { History, Trash2 } from 'lucide-react';
+import { History, Trash2, FileSpreadsheet } from 'lucide-react';
 import { PunchLog } from '../types';
 import { formatDurationMs } from '../utils/formatDuration';
+import { exportHoursToSpreadsheet } from '../utils/exportHours';
 
 interface HistoryViewProps {
   userLogs: PunchLog[];
+  /** Nome do usuário (para nome do arquivo na exportação). */
+  userName?: string;
   onConfirmDelete: (id: string, log: PunchLog) => void;
 }
 
@@ -43,7 +46,7 @@ const formatLogTime = (log: PunchLog, includeSeconds = true) => {
   return new Date(log.timestamp).toLocaleTimeString([], timeOptions);
 };
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, onConfirmDelete }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, onConfirmDelete }) => {
   const durationMap = useMemo(() => {
     const map: Record<string, number> = {};
     userLogs.forEach(log => {
@@ -69,23 +72,38 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, onConfirmDel
     return map;
   }, [userLogs]);
 
+  const handleExport = () => {
+    exportHoursToSpreadsheet(userLogs, { userName, filename: userName ? undefined : 'meus-registros' });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-      <header>
-        <h2 className="text-2xl font-bold text-slate-800">Histórico Detalhado</h2>
-        <p className="text-slate-500">Acompanhe entradas, saídas e liberações registradas no sistema.</p>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Histórico Detalhado</h2>
+          <p className="text-slate-500 dark:text-slate-400">Acompanhe entradas, saídas e liberações registradas no sistema.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={userLogs.length === 0}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+        >
+          <FileSpreadsheet size={18} aria-hidden />
+          Exportar para planilha
+        </button>
       </header>
 
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
       {/* Desktop: table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-100">
+          <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-600">
             <tr>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Data</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Horário</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Data</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Tipo</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Horário</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange } from './types';
+import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange, HolidayRange } from './types';
 import { KronusLogo } from './constants';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { generateCode, CODE_EXPIRY_MS } from './utils/code';
+import { isWeekend, getDayContribution } from './utils/weekend';
+import { isDateInHoliday } from './utils/bankOfHours';
 import { buildAuthPassword } from './utils/authPassword';
 import { getKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
 import {
@@ -31,9 +33,11 @@ import { DeleteUserPinModal } from './components/DeleteUserPinModal';
 import { PersonalCommitmentModal } from './components/PersonalCommitmentModal';
 import { MissedJustificationModal } from './components/MissedJustificationModal';
 import { VacationModal } from './components/VacationModal';
+import { HolidayModal } from './components/HolidayModal';
 import { ProductivityDashboard } from './components/ProductivityDashboard';
+import { ProfileView } from './components/ProfileView';
 
-type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity';
+type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity' | 'profile';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -72,6 +76,7 @@ const findMissingWorkday = (
   user: User,
   userLogs: PunchLog[],
   userVacations: VacationRange[],
+  userHolidays: HolidayRange[],
   referenceTimestamp: number
 ) => {
   const logDates = new Set(userLogs.map(log => log.dateString));
@@ -87,6 +92,7 @@ const findMissingWorkday = (
     if (!user.workDays.includes(dayId)) continue;
     const dateString = toLocalDateInput(dayTimestamp);
     if (isDateInVacation(dateString, userVacations)) continue;
+    if (isDateInHoliday(dateString, userHolidays)) continue;
     if (!logDates.has(dateString)) {
       return dateString;
     }
@@ -100,6 +106,7 @@ export default function App() {
   const [logs, setLogs] = useState<PunchLog[]>([]);
   const [pendingJustifications, setPendingJustifications] = useState<Record<string, string>>({});
   const [vacations, setVacations] = useState<Record<string, VacationRange[]>>({});
+  const [holidays, setHolidays] = useState<Record<string, HolidayRange[]>>({});
   const [relaxNotice, setRelaxNotice] = useState<Record<string, boolean>>({});
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -129,6 +136,10 @@ export default function App() {
   const [vacationStartDate, setVacationStartDate] = useState(() => toLocalDateInput(Date.now()));
   const [vacationEndDate, setVacationEndDate] = useState(() => toLocalDateInput(Date.now()));
   const [vacationError, setVacationError] = useState('');
+  const [holidayModalOpen, setHolidayModalOpen] = useState(false);
+  const [holidayStartDate, setHolidayStartDate] = useState(() => toLocalDateInput(Date.now()));
+  const [holidayEndDate, setHolidayEndDate] = useState(() => toLocalDateInput(Date.now()));
+  const [holidayError, setHolidayError] = useState('');
   const [missedJustificationOpen, setMissedJustificationOpen] = useState(false);
   const [missedJustificationDate, setMissedJustificationDate] = useState('');
   const [missedJustificationReason, setMissedJustificationReason] = useState('Esqueci');
@@ -145,6 +156,7 @@ export default function App() {
   const logsRef = useRef<PunchLog[]>(safeLogs);
   const pendingRef = useRef<Record<string, string>>(pendingJustifications);
   const vacationsRef = useRef<Record<string, VacationRange[]>>(vacations);
+  const holidaysRef = useRef<Record<string, HolidayRange[]>>(holidays);
   const relaxNoticeRef = useRef<Record<string, boolean>>(relaxNotice);
 
   useEffect(() => {
@@ -152,8 +164,9 @@ export default function App() {
     logsRef.current = safeLogs;
     pendingRef.current = pendingJustifications;
     vacationsRef.current = vacations;
+    holidaysRef.current = holidays;
     relaxNoticeRef.current = relaxNotice;
-  }, [safeUsers, safeLogs, pendingJustifications, vacations, relaxNotice]);
+  }, [safeUsers, safeLogs, pendingJustifications, vacations, holidays, relaxNotice]);
 
   useEffect(() => {
     viewRef.current = view;
@@ -194,6 +207,7 @@ export default function App() {
             logs: safeLogs,
             pendingJustifications,
             vacations,
+            holidays,
             relaxNotice,
           },
           data
@@ -202,6 +216,7 @@ export default function App() {
         setLogs(merged.logs);
         setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
+        setHolidays(merged.holidays);
         setRelaxNotice(merged.relaxNotice);
       }
       firestoreLoadedRef.current = true;
@@ -222,6 +237,7 @@ export default function App() {
           logs: safeLogs,
           pendingJustifications,
           vacations,
+          holidays,
           relaxNotice,
         },
         data
@@ -230,6 +246,7 @@ export default function App() {
       setLogs(merged.logs);
       setPendingJustifications(merged.pendingJustifications);
       setVacations(merged.vacations);
+      setHolidays(merged.holidays);
       setRelaxNotice(merged.relaxNotice);
     });
     return () => {
@@ -271,6 +288,7 @@ export default function App() {
             logs: logsRef.current,
             pendingJustifications: pendingRef.current,
             vacations: vacationsRef.current,
+            holidays: holidaysRef.current,
             relaxNotice: relaxNoticeRef.current,
           },
           data
@@ -279,6 +297,7 @@ export default function App() {
         setLogs(merged.logs);
         setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
+        setHolidays(merged.holidays);
         setRelaxNotice(merged.relaxNotice);
         const user = merged.users.find(u => u.email.trim().toLowerCase() === (firebaseUser.email ?? '').toLowerCase());
         if (user) {
@@ -300,6 +319,7 @@ export default function App() {
         logs: safeLogs,
         pendingJustifications,
         vacations,
+        holidays,
         relaxNotice,
       });
       syncTimeoutRef.current = null;
@@ -307,7 +327,7 @@ export default function App() {
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [safeUsers, safeLogs, pendingJustifications, vacations, relaxNotice]);
+  }, [safeUsers, safeLogs, pendingJustifications, vacations, holidays, relaxNotice]);
 
   useEffect(() => {
     return () => {
@@ -404,6 +424,11 @@ export default function App() {
     [vacations, currentUser]
   );
 
+  const userHolidays = useMemo(
+    () => (currentUser ? (holidays[currentUser.id] ?? []) : []),
+    [holidays, currentUser]
+  );
+
   const summaries: DaySummary[] = useMemo(() => {
     if (!currentUser) return [];
     const grouped = userLogs.reduce((acc, log) => {
@@ -415,6 +440,15 @@ export default function App() {
     return Object.entries(grouped).map(([date, dayLogs]) => {
       const sorted = [...(dayLogs as PunchLog[])].sort((a, b) => a.timestamp - b.timestamp);
       if (isDateInVacation(date, userVacations)) {
+        return {
+          date,
+          totalHours: 0,
+          expectedHours: 0,
+          isGoalMet: true,
+          logs: sorted,
+        };
+      }
+      if (isDateInHoliday(date, userHolidays)) {
         return {
           date,
           totalHours: 0,
@@ -441,19 +475,24 @@ export default function App() {
         }, 0);
       totalMs += justifiedMs;
       const totalHours = totalMs / (1000 * 60 * 60);
+      const isWeekendDay = isWeekend(date);
+      const expectedHours = isWeekendDay ? 0 : currentUser.dailyHours;
       return {
         date,
         totalHours,
-        expectedHours: currentUser.dailyHours,
-        isGoalMet: totalHours >= currentUser.dailyHours,
+        expectedHours,
+        isGoalMet: isWeekendDay ? true : totalHours >= currentUser.dailyHours,
         logs: sorted
       };
     }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [userLogs, currentUser, userVacations]);
+  }, [userLogs, currentUser, userVacations, userHolidays]);
 
   const bankOfHours = useMemo(() => {
     if (!currentUser) return 0;
-    return summaries.reduce((acc, s) => acc + (s.totalHours - s.expectedHours), 0);
+    return summaries.reduce(
+      (acc, s) => acc + getDayContribution(s.date, s.totalHours, s.expectedHours),
+      0
+    );
   }, [summaries, currentUser]);
 
   useEffect(() => {
@@ -472,7 +511,7 @@ export default function App() {
   const lastSessionDurationMs = useMemo(() => {
     if (!userLogs.length) return null;
     const workLogs = [...userLogs].filter(log => (
-      (log.type === 'IN' || log.type === 'OUT') && !isDateInVacation(log.dateString, userVacations)
+      (log.type === 'IN' || log.type === 'OUT') && !isDateInVacation(log.dateString, userVacations) && !isDateInHoliday(log.dateString, userHolidays)
     ));
     const chronological = workLogs.sort((a, b) => a.timestamp - b.timestamp);
     let lastIn: PunchLog | null = null;
@@ -489,7 +528,7 @@ export default function App() {
       }
     });
     return lastOutDurationMs;
-  }, [userLogs, userVacations]);
+  }, [userLogs, userVacations, userHolidays]);
 
   const handleLogin = async () => {
     const normalizedEmail = loginEmail.trim().toLowerCase();
@@ -544,6 +583,7 @@ export default function App() {
             logs: safeLogs,
             pendingJustifications,
             vacations,
+            holidays,
             relaxNotice,
           },
           data
@@ -552,6 +592,7 @@ export default function App() {
         setLogs(merged.logs);
         setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
+        setHolidays(merged.holidays);
         setRelaxNotice(merged.relaxNotice);
         userToLogin = merged.users.find(u => u.email.trim().toLowerCase() === normalizedEmail);
       }
@@ -701,6 +742,7 @@ export default function App() {
             logs: safeLogs,
             pendingJustifications,
             vacations,
+            holidays,
             relaxNotice,
           },
           data
@@ -709,6 +751,7 @@ export default function App() {
         setLogs(merged.logs);
         setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
+        setHolidays(merged.holidays);
         setRelaxNotice(merged.relaxNotice);
         user = merged.users.find(u => u.email.trim().toLowerCase() === firebaseUser.email?.toLowerCase());
       }
@@ -805,7 +848,7 @@ export default function App() {
     setLogs(prev => [newLog, ...prev]);
 
     if (type === 'IN' && !hadPunchToday && !pendingJustifications[currentUser.id]) {
-      const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, now);
+      const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
       if (missingDate) {
         setPendingJustifications(prev => ({ ...prev, [currentUser.id]: missingDate }));
       }
@@ -906,6 +949,48 @@ export default function App() {
     setVacationError('');
   };
 
+  const openHolidayModal = () => {
+    const today = toLocalDateInput(Date.now());
+    setHolidayStartDate(today);
+    setHolidayEndDate(today);
+    setHolidayError('');
+    setHolidayModalOpen(true);
+  };
+
+  const handleHolidaySave = () => {
+    if (!currentUser) return;
+    if (!holidayStartDate || !holidayEndDate) {
+      setHolidayError('Informe o período de feriado/recesso.');
+      return;
+    }
+    const start = new Date(`${holidayStartDate}T00:00:00`).getTime();
+    const end = new Date(`${holidayEndDate}T00:00:00`).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      setHolidayError('Datas inválidas.');
+      return;
+    }
+    if (end < start) {
+      setHolidayError('A data final deve ser depois da inicial.');
+      return;
+    }
+
+    const range: HolidayRange = {
+      id: crypto.randomUUID(),
+      userId: currentUser.id,
+      startDate: holidayStartDate,
+      endDate: holidayEndDate,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    setHolidays(prev => ({
+      ...prev,
+      [currentUser.id]: [...(prev[currentUser.id] ?? []), range],
+    }));
+    setHolidayModalOpen(false);
+    setHolidayError('');
+  };
+
   const handleMissedJustificationSave = () => {
     if (!currentUser) return;
     if (!missedJustificationDate) return;
@@ -950,10 +1035,6 @@ export default function App() {
     setConfirmDelete({ id });
   };
 
-  const promoteUser = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, updatedAt: Date.now() } : u));
-  };
-
   const promoteToMaster = (userId: string) => {
     if (!currentUser?.isMaster) return;
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() } : u));
@@ -985,7 +1066,7 @@ export default function App() {
   };
 
   const handleRequestDeleteUser = (user: User) => {
-    if (!currentUser?.isMaster) return;
+    if (currentUser?.role !== UserRole.ADMIN) return;
     setAdminRemoveByCpfMessage(null);
     setConfirmDeleteUser({ userId: user.id, userName: user.name });
     setDeleteUserPin('');
@@ -994,8 +1075,8 @@ export default function App() {
 
   const handleRequestDeleteUserByCpf = (cpfInput: string) => {
     setAdminRemoveByCpfMessage(null);
-    if (!currentUser?.isMaster) {
-      setAdminRemoveByCpfMessage({ type: 'error', text: 'Apenas o administrador master pode remover usuários.' });
+    if (currentUser?.role !== UserRole.ADMIN) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Apenas Master pode remover usuários.' });
       return;
     }
     const normalized = cpfDigits(cpfInput);
@@ -1019,7 +1100,7 @@ export default function App() {
   };
 
   const handleConfirmDeleteUser = () => {
-    if (!confirmDeleteUser || !currentUser || !currentUser.isMaster) return;
+    if (!confirmDeleteUser || !currentUser || currentUser.role !== UserRole.ADMIN) return;
     if (deleteUserPin !== currentUser.pin) {
       setDeleteUserPinError('PIN incorreto. Tente novamente.');
       return;
@@ -1033,18 +1114,18 @@ export default function App() {
 
   const canManageLogsForUser = (actor: User | null, targetUserId: string): boolean => {
     if (!actor) return false;
-    if (actor.isMaster) return true;
-    if (actor.role !== UserRole.ADMIN) return false;
+    if (actor.role === UserRole.ADMIN) return true;
     return actor.id === targetUserId;
   };
 
   const updateUser = (userId: string, updates: Partial<User>) => {
     setUsers(prev => prev.map(u => {
       if (u.id !== userId) return u;
-      if (u.isMaster) {
-        return { ...u, ...updates, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() };
+      const next = { ...u, ...updates, updatedAt: Date.now() };
+      if (updates.role === UserRole.ADMIN || u.role === UserRole.ADMIN) {
+        return { ...next, role: UserRole.ADMIN, isMaster: true };
       }
-      return { ...u, ...updates, updatedAt: Date.now() };
+      return next;
     }));
     if (currentUser?.id === userId && updates.pin) {
       const firebaseUser = getFirebaseCurrentUser();
@@ -1167,7 +1248,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
       <Sidebar
         currentUser={currentUser}
         view={view}
@@ -1203,12 +1284,17 @@ export default function App() {
       <main className="flex-grow p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
         <div className="lg:hidden mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <KronusLogo className="w-8 h-8 text-indigo-600" aria-hidden />
-            <span className="text-xl font-bold text-slate-800">Kronus</span>
+            <KronusLogo className="w-8 h-8 text-indigo-600 dark:text-indigo-400" aria-hidden />
+            <span className="text-xl font-bold text-slate-800 dark:text-slate-100">Kronus</span>
           </div>
-          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs" aria-hidden>
+          <button
+            type="button"
+            onClick={() => setView('profile')}
+            className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-xs hover:opacity-90 transition-opacity"
+            aria-label="Abrir meu perfil"
+          >
             {currentUser?.name.charAt(0)}
-          </div>
+          </button>
         </div>
 
         {view === 'dashboard' && (
@@ -1226,6 +1312,7 @@ export default function App() {
               onPunch={handlePunch}
               onGoToHistory={() => setView('history')}
               onOpenPersonalCommitment={openPersonalModal}
+              onOpenHoliday={openHolidayModal}
               onOpenVacation={openVacationModal}
               onOpenProductivity={() => setView('productivity')}
             />
@@ -1235,6 +1322,7 @@ export default function App() {
         {view === 'history' && (
           <HistoryView
             userLogs={userLogs}
+            userName={currentUser?.name}
             onConfirmDelete={(id, log) => { confirmDeleteIdRef.current = id; setConfirmDelete({ id, log }); }}
           />
         )}
@@ -1245,7 +1333,7 @@ export default function App() {
             users={safeUsers}
             logs={safeLogs}
             vacations={vacations}
-            onPromoteUser={promoteUser}
+            holidays={holidays}
             onPromoteToMaster={currentUser?.isMaster ? promoteToMaster : undefined}
             onDemoteToUser={currentUser?.isMaster ? demoteToUser : undefined}
             onRequestDeleteUser={handleRequestDeleteUser}
@@ -1263,6 +1351,14 @@ export default function App() {
             summaries={summaries}
             onClose={() => setView('dashboard')}
             embedded
+          />
+        )}
+
+        {view === 'profile' && (
+          <ProfileView
+            currentUser={currentUser}
+            onUpdateUser={updateUser}
+            onBack={() => setView('dashboard')}
           />
         )}
       </main>
@@ -1315,6 +1411,17 @@ export default function App() {
         onEndDateChange={setVacationEndDate}
         onConfirm={handleVacationSave}
         onCancel={() => { setVacationModalOpen(false); setVacationError(''); }}
+      />
+
+      <HolidayModal
+        open={holidayModalOpen}
+        startDate={holidayStartDate}
+        endDate={holidayEndDate}
+        error={holidayError}
+        onStartDateChange={setHolidayStartDate}
+        onEndDateChange={setHolidayEndDate}
+        onConfirm={handleHolidaySave}
+        onCancel={() => { setHolidayModalOpen(false); setHolidayError(''); }}
       />
 
       <MissedJustificationModal

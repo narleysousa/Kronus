@@ -50,3 +50,13 @@ export interface VacationRange {
   createdAt: number;
   updatedAt?: number;
 }
+
+/** Período de feriado ou recesso: dias abonados (não contam como dia de trabalho). */
+export interface HolidayRange {
+  id: string;
+  userId: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  createdAt: number;
+  updatedAt?: number;
+}

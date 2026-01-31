@@ -1,6 +1,6 @@
 import { doc, getDoc, runTransaction, setDoc } from 'firebase/firestore';
 import { ensureFirebaseAuth, getFirebaseDb, isFirestoreEnabled } from './firebase';
-import { UserRole, type User, type PunchLog, type VacationRange } from '../types';
+import { UserRole, type User, type PunchLog, type VacationRange, type HolidayRange } from '../types';
 
 const KRONUS_COLLECTION = 'kronus';
 const KRONUS_DOC_ID = 'appData';
@@ -10,6 +10,7 @@ export interface KronusData {
   logs: PunchLog[];
   pendingJustifications: Record<string, string>;
   vacations: Record<string, VacationRange[]>;
+  holidays: Record<string, HolidayRange[]>;
   relaxNotice: Record<string, boolean>;
 }
 
@@ -18,6 +19,7 @@ const defaultData: KronusData = {
   logs: [],
   pendingJustifications: {},
   vacations: {},
+  holidays: {},
   relaxNotice: {},
 };
 
@@ -50,14 +52,14 @@ const mergeById = <T extends { id: string }>(
 };
 
 const normalizeUsers = (users: User[]): User[] => users.map(user => {
-  const isMaster = !!user.isMaster;
-  const role = isMaster ? UserRole.ADMIN : (user.role ?? UserRole.USER);
+  const role = user.role ?? UserRole.USER;
+  const isMaster = role === UserRole.ADMIN ? true : !!user.isMaster;
   const updatedAt = user.updatedAt ?? user.createdAt ?? Date.now();
   const emailVerified = user.emailVerified ?? false;
   return {
     ...user,
-    isMaster,
     role,
+    isMaster,
     updatedAt,
     emailVerified,
   };
@@ -79,6 +81,17 @@ const normalizeVacations = (vacations: Record<string, VacationRange[]>): Record<
   return normalized;
 };
 
+const normalizeHolidays = (holidays: Record<string, HolidayRange[]>): Record<string, HolidayRange[]> => {
+  const normalized: Record<string, HolidayRange[]> = {};
+  Object.entries(holidays).forEach(([userId, ranges]) => {
+    normalized[userId] = (ranges ?? []).map(range => ({
+      ...range,
+      updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
+    }));
+  });
+  return normalized;
+};
+
 const normalizeData = (data: Partial<KronusData> | null | undefined): KronusData => {
   const users = Array.isArray(data?.users) ? data.users : defaultData.users;
   const logs = Array.isArray(data?.logs) ? data.logs : defaultData.logs;
@@ -86,6 +99,10 @@ const normalizeData = (data: Partial<KronusData> | null | undefined): KronusData
     data?.vacations && typeof data.vacations === 'object'
       ? data.vacations
       : defaultData.vacations;
+  const holidays =
+    data?.holidays && typeof data.holidays === 'object'
+      ? data.holidays
+      : defaultData.holidays;
   return {
     users: normalizeUsers(users),
     logs: normalizeLogs(logs),
@@ -94,6 +111,7 @@ const normalizeData = (data: Partial<KronusData> | null | undefined): KronusData
         ? data.pendingJustifications
         : defaultData.pendingJustifications,
     vacations: normalizeVacations(vacations),
+    holidays: normalizeHolidays(holidays),
     relaxNotice:
       data?.relaxNotice && typeof data.relaxNotice === 'object'
         ? data.relaxNotice
@@ -129,6 +147,21 @@ export function mergeKronusData(local: KronusData, remote: KronusData): KronusDa
     );
   });
 
+  const mergedHolidays: Record<string, HolidayRange[]> = {};
+  const holidayUserIds = new Set([
+    ...Object.keys(normalizedRemote.holidays),
+    ...Object.keys(normalizedLocal.holidays),
+  ]);
+  holidayUserIds.forEach(userId => {
+    const localRanges = normalizedLocal.holidays[userId] ?? [];
+    const remoteRanges = normalizedRemote.holidays[userId] ?? [];
+    mergedHolidays[userId] = mergeById(
+      localRanges,
+      remoteRanges,
+      (range) => range.updatedAt ?? range.createdAt ?? 0
+    );
+  });
+
   return {
     users: mergedUsers,
     logs: mergedLogs,
@@ -137,6 +170,7 @@ export function mergeKronusData(local: KronusData, remote: KronusData): KronusDa
       ...normalizedLocal.pendingJustifications,
     },
     vacations: mergedVacations,
+    holidays: mergedHolidays,
     relaxNotice: {
       ...normalizedRemote.relaxNotice,
       ...normalizedLocal.relaxNotice,

@@ -1,17 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { ShieldCheck, Users, Calendar, Edit2, Trash2, Plus, X, Save, Clock, Eye, EyeOff } from 'lucide-react';
-import { User, UserRole, PunchLog, PunchType, VacationRange } from '../types';
+import { ShieldCheck, Users, Calendar, Edit2, Trash2, Plus, X, Save, Clock, Eye, EyeOff, FileSpreadsheet } from 'lucide-react';
+import { User, UserRole, PunchLog, PunchType, VacationRange, HolidayRange } from '../types';
 import { WEEK_DAYS } from '../constants';
 import { cpfDigits, formatCpfDisplay } from '../utils/cpfMask';
 import { computeBankOfHours } from '../utils/bankOfHours';
 import { formatHoursToHms } from '../utils/formatDuration';
+import { exportHoursToSpreadsheet } from '../utils/exportHours';
 
 interface AdminPanelProps {
   currentUser: User | null;
   users: User[];
   logs: PunchLog[];
   vacations?: Record<string, VacationRange[]>;
-  onPromoteUser: (userId: string) => void;
+  holidays?: Record<string, HolidayRange[]>;
   onPromoteToMaster?: (userId: string) => void;
   onDemoteToUser?: (userId: string) => void;
   onRequestDeleteUser: (user: User) => void;
@@ -101,11 +102,10 @@ const createDefaultLogDraft = (): LogDraft => {
   };
 };
 
-/** Hierarquia: master -> tudo; admin -> somente próprios registros; usuário -> nada. */
+/** Master = acesso total; usuário comum = só os próprios registros. */
 const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
   if (!currentUser) return false;
-  if (currentUser.isMaster) return true;
-  if (currentUser.role !== UserRole.ADMIN) return false;
+  if (currentUser.role === UserRole.ADMIN) return true;
   return targetUser.id === currentUser.id;
 };
 
@@ -114,7 +114,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   users,
   logs,
   vacations = {},
-  onPromoteUser,
+  holidays = {},
   onPromoteToMaster,
   onDemoteToUser,
   onRequestDeleteUser,
@@ -131,10 +131,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     users.forEach(user => {
       const userLogs = logs.filter(l => l.userId === user.id);
       const userVacations = vacations[user.id] ?? [];
-      map[user.id] = computeBankOfHours(user, userLogs, userVacations);
+      const userHolidays = holidays[user.id] ?? [];
+      map[user.id] = computeBankOfHours(user, userLogs, userVacations, userHolidays);
     });
     return map;
-  }, [currentUser?.isMaster, users, logs, vacations]);
+  }, [currentUser?.isMaster, users, logs, vacations, holidays]);
 
   const [editingUserLogs, setEditingUserLogs] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -311,7 +312,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </header>
 
-      {currentUser?.isMaster && onRequestDeleteByCpf && (
+      {currentUser?.role === UserRole.ADMIN && onRequestDeleteByCpf && (
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
           <h3 className="font-bold text-slate-800 mb-2">Remover usuário por CPF</h3>
           <p className="text-sm text-slate-500 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
@@ -372,12 +373,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div>
                     <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 flex-wrap">
                       {user.name}
-                      {isMasterUser ? (
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Administrador master">Master</span>
-                      ) : isUserAdmin ? (
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" title="Administrador">ADM</span>
+                      {isUserAdmin ? (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" title="Acesso total">Master</span>
                       ) : (
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" title="Usuário padrão">Padrão</span>
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="Usuário comum">Padrão</span>
                       )}
                     </h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
@@ -428,31 +427,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}
                     </button>
                   )}
-                  {/* ADM padrão ou Master: podem tornar usuário comum em ADM */}
-                  {!isUserAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => onPromoteUser(user.id)}
-                      className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-100 transition-all flex items-center gap-2"
-                      title="Tornar administrador (ADM padrão)"
-                    >
-                      <ShieldCheck size={16} aria-hidden />
-                      Tornar ADM
-                    </button>
-                  )}
-                  {/* Somente ADM Master: pode tornar usuário comum ou ADM comum em Master */}
-                  {currentUser?.isMaster && onPromoteToMaster && user.id !== currentUser.id && !isMasterUser && (
+                  {/* Somente Master pode promover usuário comum a Master */}
+                  {currentUser?.isMaster && onPromoteToMaster && user.id !== currentUser.id && !isUserAdmin && (
                     <button
                       type="button"
                       onClick={() => onPromoteToMaster(user.id)}
-                      className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-sm font-bold border border-amber-100 transition-all flex items-center gap-2"
-                      title="Conceder permissão de administrador master"
+                      className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-400 rounded-xl text-sm font-bold border border-amber-100 dark:border-amber-800 transition-all flex items-center gap-2"
+                      title="Conceder acesso total (Master)"
                     >
                       <ShieldCheck size={16} aria-hidden />
-                      Tornar ADM Master
+                      Tornar Master
                     </button>
                   )}
-                  {currentUser?.isMaster && onDemoteToUser && user.id !== currentUser.id && (isUserAdmin || isMasterUser) && (
+                  {currentUser?.isMaster && onDemoteToUser && user.id !== currentUser.id && isUserAdmin && (
                     <button
                       type="button"
                       onClick={() => onDemoteToUser(user.id)}
@@ -463,11 +450,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       Rebaixar a usuário
                     </button>
                   )}
-                  {currentUser?.isMaster && user.id !== currentUser.id && (
+                  {currentUser?.role === UserRole.ADMIN && user.id !== currentUser.id && (
                     <button
                       type="button"
                       onClick={() => onRequestDeleteUser(user)}
-                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-sm font-bold border border-rose-100 transition-all flex items-center gap-2"
+                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-xl text-sm font-bold border border-rose-100 dark:border-rose-800 transition-all flex items-center gap-2"
                       aria-label={`Excluir usuário ${user.name}`}
                     >
                       <Trash2 size={16} aria-hidden />
@@ -561,14 +548,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <select
                         value={draft.role}
                         onChange={(e) => updateUserDraft(user.id, { role: e.target.value as UserRole })}
-                        disabled={isMasterUser}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                        disabled={isUserAdmin}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-400"
                       >
-                        <option value={UserRole.USER}>Usuário</option>
-                        <option value={UserRole.ADMIN}>Administrador</option>
+                        <option value={UserRole.USER}>Usuário comum</option>
+                        <option value={UserRole.ADMIN}>Master</option>
                       </select>
-                      {isMasterUser && (
-                        <p className="text-[11px] text-slate-400">Administrador master não pode ser rebaixado.</p>
+                      {isUserAdmin && (
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500">Para rebaixar, use o botão &quot;Rebaixar a usuário&quot;.</p>
                       )}
                     </div>
                   </div>
@@ -615,15 +602,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {editingUserLogs === user.id && (
                 <div className="mt-8 pt-8 border-t border-slate-100 space-y-4 animate-in slide-in-from-top-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h5 className="font-bold text-slate-700 text-sm uppercase tracking-wider">Registros de {user.name}</h5>
-                    <button
-                      type="button"
-                      onClick={() => setNewLogDrafts(prev => ({ ...prev, [user.id]: createDefaultLogDraft() }))}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-2"
-                    >
-                      <Plus size={14} aria-hidden />
-                      Resetar formulário
-                    </button>
+                    <h5 className="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase tracking-wider">Registros de {user.name}</h5>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => exportHoursToSpreadsheet(userLogs, { userName: user.name, includeUserColumn: true })}
+                        disabled={userLogs.length === 0}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <FileSpreadsheet size={14} aria-hidden />
+                        Exportar para planilha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewLogDrafts(prev => ({ ...prev, [user.id]: createDefaultLogDraft() }))}
+                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-2"
+                      >
+                        <Plus size={14} aria-hidden />
+                        Resetar formulário
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">

@@ -1,4 +1,5 @@
-import type { User, PunchLog, VacationRange } from '../types';
+import type { User, PunchLog, VacationRange, HolidayRange } from '../types';
+import { getDayContribution, isWeekend } from './weekend';
 
 const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
   const value = new Date(`${dateString}T00:00:00`).getTime();
@@ -9,6 +10,15 @@ const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
   });
 };
 
+export function isDateInHoliday(dateString: string, ranges: HolidayRange[]): boolean {
+  const value = new Date(`${dateString}T00:00:00`).getTime();
+  return ranges.some(range => {
+    const start = new Date(`${range.startDate}T00:00:00`).getTime();
+    const end = new Date(`${range.endDate}T00:00:00`).getTime();
+    return value >= start && value <= end;
+  });
+}
+
 /**
  * Calcula o banco de horas de um usuário (acumulado: total trabalhado - esperado por dia).
  * Positivo = horas a mais; negativo = horas a menos.
@@ -16,7 +26,8 @@ const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
 export function computeBankOfHours(
   user: User,
   userLogs: PunchLog[],
-  userVacations: VacationRange[]
+  userVacations: VacationRange[],
+  userHolidays: HolidayRange[] = []
 ): number {
   const grouped = userLogs.reduce((acc, log) => {
     if (!acc[log.dateString]) acc[log.dateString] = [];
@@ -28,6 +39,9 @@ export function computeBankOfHours(
     const sorted = [...dayLogs].sort((a, b) => a.timestamp - b.timestamp);
     if (isDateInVacation(date, userVacations)) {
       return bank + (0 - 0); // dia de férias: 0h trabalhadas, 0h esperadas
+    }
+    if (isDateInHoliday(date, userHolidays)) {
+      return bank + (0 - 0); // feriado/recesso: dia abonado
     }
     const punchLogs = sorted.filter(log => log.type === 'IN' || log.type === 'OUT');
     let totalMs = 0;
@@ -47,7 +61,8 @@ export function computeBankOfHours(
       }, 0);
     totalMs += justifiedMs;
     const totalHours = totalMs / (1000 * 60 * 60);
-    const expectedHours = user.dailyHours;
-    return bank + (totalHours - expectedHours);
+    const expectedHours = isWeekend(date) ? 0 : user.dailyHours;
+    const contribution = getDayContribution(date, totalHours, expectedHours);
+    return bank + contribution;
   }, 0);
 }

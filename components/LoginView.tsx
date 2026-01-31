@@ -2,6 +2,7 @@ import React from 'react';
 import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import { KronusLogo } from '../constants';
 import { PinInput } from './PinInput';
+import { ThemeToggle } from './ThemeToggle';
 
 interface LoginViewProps {
   loginEmail: string;
@@ -30,8 +31,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onForgotPassword,
 }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 relative">
+      <ThemeToggle compact dropdownPosition="down" className="absolute top-4 right-4 z-10" />
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">
         <div className="p-8 text-center bg-indigo-600 text-white">
           <div className="flex justify-center mb-4">
             <KronusLogo className="w-20 h-20 text-indigo-200" />
@@ -42,14 +44,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         <div className="p-8 space-y-6">
           <div>
-            <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 mb-2">E-mail</label>
+            <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-mail</label>
             <input
               id="login-email"
               type="email"
               inputMode="email"
               autoComplete="email"
               placeholder="seu@email.com"
-              className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none transition-colors"
+              className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none transition-colors"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
               aria-describedby={authError ? 'login-error' : undefined}
@@ -57,20 +59,20 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-4 text-center">Digite seu PIN de 4 dígitos</label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 text-center">Digite seu PIN de 4 dígitos</label>
             <PinInput value={pin} onChange={setPin} aria-label="PIN de acesso" />
           </div>
 
           <button
             type="button"
             onClick={onForgotPassword}
-            className="w-full text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+            className="w-full text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline"
           >
             Esqueci minha senha
           </button>
 
           {authError && (
-            <div id="login-error" className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100" role="alert">
+            <div id="login-error" className="flex items-center gap-2 text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800" role="alert">
               <AlertCircle size={16} aria-hidden />
               <span>{authError}</span>
             </div>
@@ -87,15 +89,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </button>
 
           <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-slate-200" />
-            <span className="flex-shrink mx-4 text-slate-400 text-sm">ou</span>
-            <div className="flex-grow border-t border-slate-200" />
+            <div className="flex-grow border-t border-slate-200 dark:border-slate-600" />
+            <span className="flex-shrink mx-4 text-slate-400 dark:text-slate-500 text-sm">ou</span>
+            <div className="flex-grow border-t border-slate-200 dark:border-slate-600" />
           </div>
 
           <button
             type="button"
             onClick={onGoToRegister}
-            className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold py-3 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 font-semibold py-3 rounded-xl border border-slate-200 dark:border-slate-600 transition-all flex items-center justify-center gap-2"
           >
             <UserPlus size={18} aria-hidden />
             Criar Nova Conta
