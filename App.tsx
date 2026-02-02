@@ -5,7 +5,7 @@ import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { isWeekend, getDayContribution } from './utils/weekend';
 import { isDateInHoliday } from './utils/bankOfHours';
 import { buildAuthPassword } from './utils/authPassword';
-import { getKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
+import { getKronusData, getLegacyKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
 import {
   createFirebaseUser,
   signInFirebaseUser,
@@ -18,6 +18,7 @@ import {
   getFirebaseAuth,
   updateFirebasePassword,
   signOutFirebase,
+  waitForAuthState,
 } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -605,7 +606,12 @@ export default function App() {
     setAuthError('');
     let userToLogin = localUser;
     if (!userToLogin || !localPinMatches) {
-      const data = await getKronusData();
+      // Garantir que o Auth esteja propagado antes de ler o Firestore (token disponível)
+      await waitForAuthState();
+      let data = await getKronusData({ skipAuthCheck: true });
+      if (!data || !data.users.length) {
+        data = await getLegacyKronusData();
+      }
       if (data) {
         const merged = mergeKronusData(
           {
@@ -620,7 +626,12 @@ export default function App() {
         setLogs(merged.logs);
         setVacations(merged.vacations);
         setHolidays(merged.holidays);
-        userToLogin = merged.users.find(u => u.email.trim().toLowerCase() === normalizedEmail);
+        const matchEmail = (e: string) => (e || '').trim().toLowerCase() === normalizedEmail;
+        userToLogin = merged.users.find(u => matchEmail(u.email));
+        if (!userToLogin && firebaseUser.email) {
+          const authEmail = (firebaseUser.email || '').trim().toLowerCase();
+          userToLogin = merged.users.find(u => (u.email || '').trim().toLowerCase() === authEmail);
+        }
       }
     }
 

@@ -48,6 +48,11 @@ export function getFirebaseAuth(): Auth {
   return auth;
 }
 
+/** Aguarda o estado de autenticação estar definido (útil logo após sign-in para o Firestore ter o token). */
+export function waitForAuthState(): Promise<void> {
+  return getFirebaseAuth().authStateReady();
+}
+
 export function isFirestoreEnabled(): boolean {
   return FIRESTORE_ENABLED;
 }

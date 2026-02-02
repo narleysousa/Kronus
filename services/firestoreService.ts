@@ -299,9 +299,23 @@ const readLegacyData = async (): Promise<KronusData | null> => {
   return convertLegacyData(legacySnap.data() as Partial<LegacyKronusData>);
 };
 
-export async function getKronusData(): Promise<KronusData | null> {
+/** Lê apenas o documento legado (kronus/appData). Útil quando as coleções falham ou estão vazias. */
+export async function getLegacyKronusData(): Promise<KronusData | null> {
+  if (!isFirestoreEnabled()) return null;
   try {
-    if (!(await canUseFirestore())) return null;
+    const legacy = await readLegacyData();
+    return legacy ? normalizeData(legacy) : null;
+  } catch (e) {
+    console.warn('Firestore getLegacyKronusData:', e);
+    return null;
+  }
+}
+
+export async function getKronusData(options?: { skipAuthCheck?: boolean }): Promise<KronusData | null> {
+  try {
+    const skipAuth = options?.skipAuthCheck === true;
+    if (!isFirestoreEnabled()) return null;
+    if (!skipAuth && !(await canUseFirestore())) return null;
     let users: User[] = [];
     let logs: PunchLog[] = [];
     let vacationsList: VacationRange[] = [];
