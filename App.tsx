@@ -5,7 +5,18 @@ import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
 import { isWeekend, getDayContribution } from './utils/weekend';
 import { isDateInHoliday } from './utils/bankOfHours';
 import { buildAuthPassword } from './utils/authPassword';
-import { getKronusData, getLegacyKronusData, mergeAndSetKronusData, mergeKronusData } from './services/firestoreService';
+import {
+  deleteKronusDocs,
+  getKronusData,
+  getLegacyKronusData,
+  mergeAndSetKronusData,
+  mergeKronusData,
+  subscribeKronusData,
+  upsertHolidayDoc,
+  upsertLogDoc,
+  upsertUserDoc,
+  upsertVacationDoc,
+} from './services/firestoreService';
 import {
   createFirebaseUser,
   signInFirebaseUser,
@@ -80,6 +91,33 @@ const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const isMasterEmail = (email: string) => normalizeEmail(email) === normalizeEmail(MASTER_EMAIL);
+
+const buildSignature = (data: {
+  users: User[];
+  logs: PunchLog[];
+  vacations: Record<string, VacationRange[]>;
+  holidays: Record<string, HolidayRange[]>;
+}) => {
+  const userSig = data.users
+    .map(u => `${u.id}:${u.updatedAt ?? u.createdAt ?? 0}`)
+    .sort()
+    .join('|');
+  const logSig = data.logs
+    .map(l => `${l.id}:${l.updatedAt ?? l.timestamp ?? 0}`)
+    .sort()
+    .join('|');
+  const vacationSig = Object.values(data.vacations)
+    .flatMap(ranges => ranges ?? [])
+    .map(v => `${v.id}:${v.updatedAt ?? v.createdAt ?? 0}`)
+    .sort()
+    .join('|');
+  const holidaySig = Object.values(data.holidays)
+    .flatMap(ranges => ranges ?? [])
+    .map(h => `${h.id}:${h.updatedAt ?? h.createdAt ?? 0}`)
+    .sort()
+    .join('|');
+  return `${userSig}::${logSig}::${vacationSig}::${holidaySig}`;
+};
 
 const findMissingWorkday = (
   user: User,
@@ -161,6 +199,7 @@ export default function App() {
   const [registerEmailNotice, setRegisterEmailNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const firestoreLoadedRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteSignatureRef = useRef<string | null>(null);
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
@@ -270,14 +309,16 @@ export default function App() {
   useEffect(() => {
     if (!currentUser?.emailVerified) return;
     let mounted = true;
-    getKronusData().then((data) => {
-      if (!mounted || !data) return;
+    let unsubscribe: (() => void) | null = null;
+    subscribeKronusData((data) => {
+      if (!mounted) return;
+      remoteSignatureRef.current = buildSignature(data);
       const merged = mergeKronusData(
         {
-          users: safeUsers,
-          logs: safeLogs,
-          vacations,
-          holidays,
+          users: usersRef.current,
+          logs: logsRef.current,
+          vacations: vacationsRef.current,
+          holidays: holidaysRef.current,
         },
         data
       );
@@ -285,9 +326,17 @@ export default function App() {
       setLogs(merged.logs);
       setVacations(merged.vacations);
       setHolidays(merged.holidays);
+      firestoreLoadedRef.current = true;
+    }).then(unsub => {
+      if (!mounted) {
+        unsub();
+        return;
+      }
+      unsubscribe = unsub;
     });
     return () => {
       mounted = false;
+      if (unsubscribe) unsubscribe();
     };
   }, [currentUser?.id, currentUser?.emailVerified]);
 
@@ -345,6 +394,13 @@ export default function App() {
 
   useEffect(() => {
     if (!firestoreLoadedRef.current) return;
+    const localSignature = buildSignature({
+      users: safeUsers,
+      logs: safeLogs,
+      vacations,
+      holidays,
+    });
+    if (remoteSignatureRef.current && remoteSignatureRef.current === localSignature) return;
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(() => {
       mergeAndSetKronusData({
@@ -725,6 +781,7 @@ export default function App() {
     try {
       const firebaseUser = await createFirebaseUser(email, password);
       setUsers(prev => [...prev, newUser]);
+      void upsertUserDoc(newUser);
       openVerifyEmailView(newUser.id, newUser.email);
       setLocalEmailVerified(newUser.id, false);
       try {
@@ -912,6 +969,15 @@ export default function App() {
       setRemoveByCpfMessage({ type: 'error', text: 'PIN incorreto. Verifique e tente novamente.' });
       return;
     }
+    const logsToDelete = logsRef.current.filter(l => l.userId === user.id).map(l => l.id);
+    const vacationsToDelete = (vacationsRef.current[user.id] ?? []).map(v => v.id);
+    const holidaysToDelete = (holidaysRef.current[user.id] ?? []).map(h => h.id);
+    void deleteKronusDocs({
+      users: [user.id],
+      logs: logsToDelete,
+      vacations: vacationsToDelete,
+      holidays: holidaysToDelete,
+    });
     setUsers(prev => prev.filter(u => u.id !== user.id));
     setLogs(prev => prev.filter(l => l.userId !== user.id));
     setVacations(prev => {
@@ -945,6 +1011,7 @@ export default function App() {
     };
 
     setLogs(prev => [newLog, ...prev]);
+    void upsertLogDoc(newLog);
 
     if (type === 'IN' && !hadPunchToday && !currentUser.pendingJustification) {
       const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
@@ -1004,6 +1071,7 @@ export default function App() {
     };
 
     setLogs(prev => [newLog, ...prev]);
+    void upsertLogDoc(newLog);
     setPersonalModalOpen(false);
     setPersonalError('');
   };
@@ -1046,6 +1114,7 @@ export default function App() {
       ...prev,
       [currentUser.id]: [...(prev[currentUser.id] ?? []), range],
     }));
+    void upsertVacationDoc(range);
     setVacationModalOpen(false);
     setVacationError('');
   };
@@ -1088,6 +1157,7 @@ export default function App() {
       ...prev,
       [currentUser.id]: [...(prev[currentUser.id] ?? []), range],
     }));
+    void upsertHolidayDoc(range);
     setHolidayModalOpen(false);
     setHolidayError('');
   };
@@ -1116,6 +1186,7 @@ export default function App() {
     };
 
     setLogs(prev => [newLog, ...prev]);
+    void upsertLogDoc(newLog);
     setUsers(prev => prev.map(u => (
       u.id === currentUser.id ? { ...u, pendingJustification: '', updatedAt: Date.now() } : u
     )));
@@ -1124,6 +1195,7 @@ export default function App() {
   };
 
   const deleteLog = (id: string) => {
+    void deleteKronusDocs({ logs: [id] });
     setLogs(prev => prev.filter(l => l.id !== id));
     confirmDeleteIdRef.current = null;
     setConfirmDelete(null);
@@ -1149,6 +1221,15 @@ export default function App() {
   const deleteUser = (userId: string) => {
     const target = safeUsers.find(u => u.id === userId);
     if (target && isMasterEmail(target.email)) return;
+    const logsToDelete = logsRef.current.filter(l => l.userId === userId).map(l => l.id);
+    const vacationsToDelete = (vacationsRef.current[userId] ?? []).map(v => v.id);
+    const holidaysToDelete = (holidaysRef.current[userId] ?? []).map(h => h.id);
+    void deleteKronusDocs({
+      users: [userId],
+      logs: logsToDelete,
+      vacations: vacationsToDelete,
+      holidays: holidaysToDelete,
+    });
     setUsers(prev => prev.filter(u => u.id !== userId));
     setLogs(prev => prev.filter(l => l.userId !== userId));
     setVacations(prev => {
@@ -1227,14 +1308,14 @@ export default function App() {
   };
 
   const updateUser = (userId: string, updates: Partial<User>) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const next = { ...u, ...updates, updatedAt: Date.now() };
-      if (isMasterEmail(next.email) || updates.role === UserRole.ADMIN || u.role === UserRole.ADMIN) {
-        return { ...next, role: UserRole.ADMIN, isMaster: true };
-      }
-      return next;
-    }));
+    const current = usersRef.current.find(u => u.id === userId);
+    if (!current) return;
+    const baseNext = { ...current, ...updates, updatedAt: Date.now() };
+    const next = (isMasterEmail(baseNext.email) || updates.role === UserRole.ADMIN || current.role === UserRole.ADMIN)
+      ? { ...baseNext, role: UserRole.ADMIN, isMaster: true }
+      : baseNext;
+    setUsers(prev => prev.map(u => (u.id === userId ? next : u)));
+    void upsertUserDoc(next);
     if (currentUser?.id === userId && updates.pin) {
       const firebaseUser = getFirebaseCurrentUser();
       if (firebaseUser) {
@@ -1244,18 +1325,20 @@ export default function App() {
   };
 
   const updateLog = (logId: string, updates: Partial<PunchLog>) => {
-    setLogs(prev => {
-      const existing = prev.find(l => l.id === logId);
-      if (!existing) return prev;
-      if (!canManageLogsForUser(currentUser, existing.userId)) return prev;
-      return prev.map(l => l.id === logId ? { ...l, ...updates, updatedAt: Date.now() } : l);
-    });
+    const existing = logsRef.current.find(l => l.id === logId);
+    if (!existing) return;
+    if (!canManageLogsForUser(currentUser, existing.userId)) return;
+    const next = { ...existing, ...updates, updatedAt: Date.now() };
+    setLogs(prev => prev.map(l => l.id === logId ? next : l));
+    void upsertLogDoc(next);
   };
 
   const addLog = (log: PunchLog) => {
     const now = Date.now();
     if (!canManageLogsForUser(currentUser, log.userId)) return;
-    setLogs(prev => [{ ...log, updatedAt: log.updatedAt ?? now }, ...prev]);
+    const next = { ...log, updatedAt: log.updatedAt ?? now };
+    setLogs(prev => [next, ...prev]);
+    void upsertLogDoc(next);
   };
 
   const isClockedIn = lastWorkLog?.type === 'IN';

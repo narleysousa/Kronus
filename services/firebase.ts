@@ -61,6 +61,7 @@ export async function ensureFirebaseAuth(): Promise<boolean> {
   if (!isFirestoreEnabled()) return false;
   try {
     const firebaseAuth = getFirebaseAuth();
+    await firebaseAuth.authStateReady();
     const currentUser = firebaseAuth.currentUser;
     return !!currentUser;
   } catch (error) {

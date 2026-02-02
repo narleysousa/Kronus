@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
 import { ensureFirebaseAuth, getFirebaseDb, isFirestoreEnabled } from './firebase';
 import { UserRole, type User, type PunchLog, type VacationRange, type HolidayRange } from '../types';
 
@@ -93,13 +93,23 @@ const normalizeLogs = (logs: PunchLog[]): PunchLog[] => logs.map(log => ({
   updatedAt: log.updatedAt ?? log.timestamp ?? Date.now(),
 }));
 
+const normalizeVacationRange = (range: VacationRange): VacationRange => ({
+  ...range,
+  createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
+  updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
+});
+
+const normalizeHolidayRange = (range: HolidayRange): HolidayRange => ({
+  ...range,
+  createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
+  updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
+});
+
 const normalizeVacations = (vacations: Record<string, VacationRange[]>): Record<string, VacationRange[]> => {
   const normalized: Record<string, VacationRange[]> = {};
   Object.entries(vacations).forEach(([userId, ranges]) => {
     normalized[userId] = (ranges ?? []).map(range => ({
-      ...range,
-      createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
-      updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
+      ...normalizeVacationRange(range),
     }));
   });
   return normalized;
@@ -109,9 +119,7 @@ const normalizeHolidays = (holidays: Record<string, HolidayRange[]>): Record<str
   const normalized: Record<string, HolidayRange[]> = {};
   Object.entries(holidays).forEach(([userId, ranges]) => {
     normalized[userId] = (ranges ?? []).map(range => ({
-      ...range,
-      createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
-      updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
+      ...normalizeHolidayRange(range),
     }));
   });
   return normalized;
@@ -355,6 +363,217 @@ export async function getKronusData(options?: { skipAuthCheck?: boolean }): Prom
   }
 }
 
+export async function subscribeKronusData(
+  onData: (data: KronusData) => void,
+  onError?: (error: unknown) => void
+): Promise<() => void> {
+  if (!isFirestoreEnabled()) return () => {};
+  if (!(await canUseFirestore())) return () => {};
+  const db = getFirebaseDb();
+
+  let users: User[] = [];
+  let logs: PunchLog[] = [];
+  let vacationsList: VacationRange[] = [];
+  let holidaysList: HolidayRange[] = [];
+
+  const ready = {
+    users: false,
+    logs: false,
+    vacations: false,
+    holidays: false,
+  };
+
+  let legacyUnsub: (() => void) | null = null;
+  let collectionUnsubs: Array<() => void> = [];
+  let triedLegacyOnEmpty = false;
+  let active = true;
+
+  const emit = () => {
+    if (!ready.users || !ready.logs || !ready.vacations || !ready.holidays) return;
+    const data = normalizeData({
+      users,
+      logs,
+      vacations: groupRangesByUser(vacationsList),
+      holidays: groupRangesByUser(holidaysList),
+    });
+    onData(data);
+    if (!triedLegacyOnEmpty && !data.users.length && !data.logs.length && !vacationsList.length && !holidaysList.length) {
+      triedLegacyOnEmpty = true;
+      readLegacyData()
+        .then(legacyData => {
+          if (!active || !legacyData) return;
+          const normalizedLegacy = normalizeData(legacyData);
+          if (
+            normalizedLegacy.users.length ||
+            normalizedLegacy.logs.length ||
+            Object.keys(normalizedLegacy.vacations).length ||
+            Object.keys(normalizedLegacy.holidays).length
+          ) {
+            onData(normalizedLegacy);
+            void setKronusData(normalizedLegacy).catch(error => {
+              console.warn('Firestore migrate legacy on subscribe:', error);
+            });
+          }
+        })
+        .catch(error => {
+          console.warn('Firestore read legacy on empty:', error);
+        });
+    }
+  };
+
+  const startLegacyFallback = () => {
+    if (legacyUnsub) return;
+    collectionUnsubs.forEach(unsub => unsub());
+    collectionUnsubs = [];
+    const legacyRef = doc(db, LEGACY_COLLECTION, LEGACY_DOC_ID);
+    legacyUnsub = onSnapshot(
+      legacyRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        const legacyData = convertLegacyData(snap.data() as Partial<LegacyKronusData>);
+        onData(legacyData);
+      },
+      (error) => {
+        console.warn('Firestore legacy subscribe failed:', error);
+        onError?.(error);
+      }
+    );
+  };
+
+  const handleCollectionError = (label: string, error: unknown) => {
+    console.warn(`Firestore subscribe ${label}:`, error);
+    onError?.(error);
+    startLegacyFallback();
+  };
+
+  const unsubUsers = onSnapshot(
+    collection(db, USERS_COLLECTION),
+    (snap) => {
+      users = snap.docs.map(docSnap => ({
+        ...(docSnap.data() as User),
+        id: docSnap.id,
+      }));
+      ready.users = true;
+      emit();
+    },
+    (error) => handleCollectionError('users', error)
+  );
+
+  const unsubLogs = onSnapshot(
+    collection(db, LOGS_COLLECTION),
+    (snap) => {
+      logs = snap.docs.map(docSnap => ({
+        ...(docSnap.data() as PunchLog),
+        id: docSnap.id,
+      }));
+      ready.logs = true;
+      emit();
+    },
+    (error) => handleCollectionError('logs', error)
+  );
+
+  const unsubVacations = onSnapshot(
+    collection(db, VACATIONS_COLLECTION),
+    (snap) => {
+      vacationsList = snap.docs.map(docSnap => ({
+        ...(docSnap.data() as VacationRange),
+        id: docSnap.id,
+      }));
+      ready.vacations = true;
+      emit();
+    },
+    (error) => handleCollectionError('vacations', error)
+  );
+
+  const unsubHolidays = onSnapshot(
+    collection(db, HOLIDAYS_COLLECTION),
+    (snap) => {
+      holidaysList = snap.docs.map(docSnap => ({
+        ...(docSnap.data() as HolidayRange),
+        id: docSnap.id,
+      }));
+      ready.holidays = true;
+      emit();
+    },
+    (error) => handleCollectionError('holidays', error)
+  );
+
+  collectionUnsubs = [unsubUsers, unsubLogs, unsubVacations, unsubHolidays];
+
+  return () => {
+    active = false;
+    collectionUnsubs.forEach(unsub => unsub());
+    if (legacyUnsub) legacyUnsub();
+  };
+}
+
+export async function deleteKronusDocs(
+  ids: Partial<{
+    users: string[];
+    logs: string[];
+    vacations: string[];
+    holidays: string[];
+  }>
+): Promise<void> {
+  try {
+    if (!(await canUseFirestore())) return;
+    await deleteCollectionDocs(USERS_COLLECTION, ids.users ?? []);
+    await deleteCollectionDocs(LOGS_COLLECTION, ids.logs ?? []);
+    await deleteCollectionDocs(VACATIONS_COLLECTION, ids.vacations ?? []);
+    await deleteCollectionDocs(HOLIDAYS_COLLECTION, ids.holidays ?? []);
+  } catch (e) {
+    console.warn('Firestore deleteKronusDocs:', e);
+  }
+}
+
+export async function upsertUserDoc(user: User): Promise<void> {
+  try {
+    if (!(await canUseFirestore())) return;
+    const normalized = normalizeUsers([user])[0];
+    const cleaned = stripUndefined(normalized);
+    const db = getFirebaseDb();
+    await setDoc(doc(db, USERS_COLLECTION, normalized.id), cleaned, { merge: false });
+  } catch (e) {
+    console.warn('Firestore upsertUserDoc:', e);
+  }
+}
+
+export async function upsertLogDoc(log: PunchLog): Promise<void> {
+  try {
+    if (!(await canUseFirestore())) return;
+    const normalized = normalizeLogs([log])[0];
+    const cleaned = stripUndefined(normalized);
+    const db = getFirebaseDb();
+    await setDoc(doc(db, LOGS_COLLECTION, normalized.id), cleaned, { merge: false });
+  } catch (e) {
+    console.warn('Firestore upsertLogDoc:', e);
+  }
+}
+
+export async function upsertVacationDoc(range: VacationRange): Promise<void> {
+  try {
+    if (!(await canUseFirestore())) return;
+    const normalized = normalizeVacationRange(range);
+    const cleaned = stripUndefined(normalized);
+    const db = getFirebaseDb();
+    await setDoc(doc(db, VACATIONS_COLLECTION, normalized.id), cleaned, { merge: false });
+  } catch (e) {
+    console.warn('Firestore upsertVacationDoc:', e);
+  }
+}
+
+export async function upsertHolidayDoc(range: HolidayRange): Promise<void> {
+  try {
+    if (!(await canUseFirestore())) return;
+    const normalized = normalizeHolidayRange(range);
+    const cleaned = stripUndefined(normalized);
+    const db = getFirebaseDb();
+    await setDoc(doc(db, HOLIDAYS_COLLECTION, normalized.id), cleaned, { merge: false });
+  } catch (e) {
+    console.warn('Firestore upsertHolidayDoc:', e);
+  }
+}
+
 export async function setKronusData(
   data: KronusData,
   options: { remoteData?: KronusData | null; prune?: boolean } = {}
@@ -396,9 +615,8 @@ export async function setKronusData(
 export async function mergeAndSetKronusData(localData: KronusData): Promise<void> {
   try {
     if (!(await canUseFirestore())) return;
-    const remoteData = await getKronusData();
     const normalized = normalizeData(localData);
-    await setKronusData(normalized, { remoteData, prune: true });
+    await setKronusData(normalized);
   } catch (e) {
     console.warn('Firestore mergeAndSetKronusData:', e);
   }
