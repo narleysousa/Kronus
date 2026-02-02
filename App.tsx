@@ -42,6 +42,8 @@ import { ProfileView } from './components/ProfileView';
 
 type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'reset-password' | 'dashboard' | 'admin' | 'history' | 'productivity' | 'profile';
 
+const MASTER_EMAIL = 'narley_almeida@hotmail.com';
+
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
@@ -74,6 +76,9 @@ const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
     return value >= start && value <= end;
   });
 };
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const isMasterEmail = (email: string) => normalizeEmail(email) === normalizeEmail(MASTER_EMAIL);
 
 const findMissingWorkday = (
   user: User,
@@ -217,6 +222,19 @@ export default function App() {
     if (!candidate) return;
     setUsers(prev => prev.map(u => (
       u.id === candidate.id
+        ? { ...u, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() }
+        : u
+    )));
+  }, [safeUsers, setUsers]);
+
+  useEffect(() => {
+    if (!safeUsers.length) return;
+    const needsPromotion = safeUsers.some(u => (
+      isMasterEmail(u.email) && (u.role !== UserRole.ADMIN || !u.isMaster)
+    ));
+    if (!needsPromotion) return;
+    setUsers(prev => prev.map(u => (
+      isMasterEmail(u.email)
         ? { ...u, role: UserRole.ADMIN, isMaster: true, updatedAt: Date.now() }
         : u
     )));
@@ -543,7 +561,7 @@ export default function App() {
   }, [userLogs, userVacations, userHolidays]);
 
   const handleLogin = async () => {
-    const normalizedEmail = loginEmail.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(loginEmail);
     const localUser = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail);
     const localPinMatches = !!localUser && localUser.pin === pin;
 
@@ -668,7 +686,8 @@ export default function App() {
       return;
     }
 
-    const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    const email = normalizeEmail(String(formData.get('email') ?? ''));
+    const isMasterAdminFinal = isMasterAdmin || isMasterEmail(email);
     if (safeUsers.some(u => u.email.trim().toLowerCase() === email)) {
       setRegisterFormError('E-mail já cadastrado.');
       return;
@@ -679,8 +698,8 @@ export default function App() {
       email,
       cpf: formatCpfDisplay(cpfRaw),
       pin,
-      role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
-      isMaster: isMasterAdmin,
+      role: isMasterAdminFinal ? UserRole.ADMIN : UserRole.USER,
+      isMaster: isMasterAdminFinal,
       emailVerified: false,
       pendingJustification: '',
       relaxNotice: false,
@@ -863,6 +882,10 @@ export default function App() {
     const user = safeUsers.find(u => cpfDigits(u.cpf) === normalized);
     if (!user) {
       setRemoveByCpfMessage({ type: 'error', text: 'CPF não encontrado.' });
+      return;
+    }
+    if (isMasterEmail(user.email)) {
+      setRemoveByCpfMessage({ type: 'error', text: 'Este usuário master não pode ser removido.' });
       return;
     }
     if (user.isMaster && safeUsers.length > 1) {
@@ -1107,10 +1130,14 @@ export default function App() {
 
   const demoteToUser = (userId: string) => {
     if (!currentUser?.isMaster) return;
+    const target = safeUsers.find(u => u.id === userId);
+    if (target && isMasterEmail(target.email)) return;
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: UserRole.USER, isMaster: false, updatedAt: Date.now() } : u));
   };
 
   const deleteUser = (userId: string) => {
+    const target = safeUsers.find(u => u.id === userId);
+    if (target && isMasterEmail(target.email)) return;
     setUsers(prev => prev.filter(u => u.id !== userId));
     setLogs(prev => prev.filter(l => l.userId !== userId));
     setVacations(prev => {
@@ -1127,6 +1154,10 @@ export default function App() {
 
   const handleRequestDeleteUser = (user: User) => {
     if (currentUser?.role !== UserRole.ADMIN) return;
+    if (isMasterEmail(user.email)) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Este usuário master não pode ser excluído.' });
+      return;
+    }
     setAdminRemoveByCpfMessage(null);
     setConfirmDeleteUser({ userId: user.id, userName: user.name });
     setDeleteUserPin('');
@@ -1147,6 +1178,10 @@ export default function App() {
     const user = safeUsers.find(u => cpfDigits(u.cpf) === normalized);
     if (!user) {
       setAdminRemoveByCpfMessage({ type: 'error', text: 'CPF não encontrado.' });
+      return;
+    }
+    if (isMasterEmail(user.email)) {
+      setAdminRemoveByCpfMessage({ type: 'error', text: 'Este usuário master não pode ser excluído.' });
       return;
     }
     if (user.id === currentUser.id) {
@@ -1184,7 +1219,7 @@ export default function App() {
     setUsers(prev => prev.map(u => {
       if (u.id !== userId) return u;
       const next = { ...u, ...updates, updatedAt: Date.now() };
-      if (updates.role === UserRole.ADMIN || u.role === UserRole.ADMIN) {
+      if (isMasterEmail(next.email) || updates.role === UserRole.ADMIN || u.role === UserRole.ADMIN) {
         return { ...next, role: UserRole.ADMIN, isMaster: true };
       }
       return next;
