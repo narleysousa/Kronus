@@ -61,21 +61,30 @@ const mergeById = <T extends { id: string }>(
   return Array.from(map.values());
 };
 
+const DEFAULT_WORK_DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+const DEFAULT_DAILY_HOURS = 8;
+
 const normalizeUsers = (users: User[]): User[] => users.map(user => {
   const role = user.role ?? UserRole.USER;
   const isMaster = role === UserRole.ADMIN ? true : !!user.isMaster;
-  const updatedAt = user.updatedAt ?? user.createdAt ?? Date.now();
+  const createdAt = user.createdAt ?? user.updatedAt ?? Date.now();
+  const updatedAt = user.updatedAt ?? createdAt ?? Date.now();
   const emailVerified = user.emailVerified ?? false;
   const pendingJustification = user.pendingJustification ?? '';
   const relaxNotice = user.relaxNotice ?? false;
+  const workDays = Array.isArray(user.workDays) ? user.workDays : DEFAULT_WORK_DAYS;
+  const dailyHours = Number.isFinite(user.dailyHours) ? user.dailyHours : DEFAULT_DAILY_HOURS;
   return {
     ...user,
     role,
     isMaster,
+    createdAt,
     updatedAt,
     emailVerified,
     pendingJustification,
     relaxNotice,
+    workDays,
+    dailyHours,
   };
 });
 
@@ -89,6 +98,7 @@ const normalizeVacations = (vacations: Record<string, VacationRange[]>): Record<
   Object.entries(vacations).forEach(([userId, ranges]) => {
     normalized[userId] = (ranges ?? []).map(range => ({
       ...range,
+      createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
       updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
     }));
   });
@@ -100,6 +110,7 @@ const normalizeHolidays = (holidays: Record<string, HolidayRange[]>): Record<str
   Object.entries(holidays).forEach(([userId, ranges]) => {
     normalized[userId] = (ranges ?? []).map(range => ({
       ...range,
+      createdAt: range.createdAt ?? range.updatedAt ?? Date.now(),
       updatedAt: range.updatedAt ?? range.createdAt ?? Date.now(),
     }));
   });
@@ -148,6 +159,21 @@ const readCollection = async <T extends { id: string }>(collectionName: string):
 
 const CHUNK_SIZE = 450;
 
+const stripUndefined = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => stripUndefined(item))
+      .filter(item => item !== undefined) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, stripUndefined(v)] as const);
+    return Object.fromEntries(entries) as T;
+  }
+  return value;
+};
+
 const writeCollection = async <T extends { id: string }>(
   collectionName: string,
   items: T[]
@@ -157,7 +183,8 @@ const writeCollection = async <T extends { id: string }>(
   for (let i = 0; i < items.length; i += CHUNK_SIZE) {
     const batch = writeBatch(db);
     items.slice(i, i + CHUNK_SIZE).forEach(item => {
-      batch.set(doc(db, collectionName, item.id), item, { merge: false });
+      const cleaned = stripUndefined(item);
+      batch.set(doc(db, collectionName, item.id), cleaned, { merge: false });
     });
     await batch.commit();
   }
@@ -343,7 +370,7 @@ export async function setKronusData(
   } catch (e) {
     console.warn('Firestore setKronusData:', e);
     try {
-      const legacyData = buildLegacyData(data);
+      const legacyData = stripUndefined(buildLegacyData(data));
       const db = getFirebaseDb();
       await setDoc(doc(db, LEGACY_COLLECTION, LEGACY_DOC_ID), legacyData, { merge: false });
     } catch (legacyError) {
