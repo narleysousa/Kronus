@@ -13,6 +13,8 @@ export interface User {
   role: UserRole;
   isMaster?: boolean;
   emailVerified?: boolean;
+  pendingJustification?: string;
+  relaxNotice?: boolean;
   position: string;
   dailyHours: number;
   workDays: string[]; // e.g. ["Mon", "Tue"...]

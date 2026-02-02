@@ -1,32 +1,75 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Kronus: documento único com users, logs, justificativas, férias e avisos.
-    // Estrutura esperada: { users, logs, pendingJustifications, vacations, relaxNotice }
-    match /kronus/appData {
-
-      // Valida estrutura do documento na escrita (evita dados corrompidos)
-      function isValidKronusData() {
-        let data = request.resource.data;
-        return data.keys().hasAll(['users', 'logs', 'pendingJustifications', 'vacations', 'relaxNotice'])
-            && data.users is list
-            && data.logs is list
-            && data.pendingJustifications is map
-            && data.vacations is map
-            && data.relaxNotice is map
-            && data.users.size() <= 500
-            && data.logs.size() <= 100000;
-      }
-
-      // Leitura: qualquer usuário autenticado (e-mail verificado não exigido para cadastro/exclusão funcionar)
-      allow read: if request.auth != null;
-
-      // Escrita: usuário autenticado + payload com estrutura válida do Kronus
-      allow write: if request.auth != null && isValidKronusData();
+    function isAuthed() {
+      return request.auth != null;
     }
 
-    // Bloqueia qualquer outro path no Firestore (segurança)
+    function hasFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function isValidUser(data) {
+      return hasFields(data, ['id', 'name', 'email', 'cpf', 'pin', 'role', 'position', 'dailyHours', 'workDays', 'createdAt'])
+        && data.id is string
+        && data.name is string
+        && data.email is string
+        && data.cpf is string
+        && data.pin is string
+        && data.role is string
+        && data.position is string
+        && data.dailyHours is number
+        && data.workDays is list
+        && data.createdAt is number;
+    }
+
+    function isValidLog(data) {
+      return hasFields(data, ['id', 'userId', 'timestamp', 'type', 'dateString'])
+        && data.id is string
+        && data.userId is string
+        && data.timestamp is number
+        && data.type is string
+        && data.dateString is string;
+    }
+
+    function isValidRange(data) {
+      return hasFields(data, ['id', 'userId', 'startDate', 'endDate', 'createdAt'])
+        && data.id is string
+        && data.userId is string
+        && data.startDate is string
+        && data.endDate is string
+        && data.createdAt is number;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthed();
+      allow create, update: if isAuthed() && isValidUser(request.resource.data) && request.resource.data.id == userId;
+      allow delete: if isAuthed();
+    }
+
+    match /logs/{logId} {
+      allow read: if isAuthed();
+      allow create, update: if isAuthed() && isValidLog(request.resource.data) && request.resource.data.id == logId;
+      allow delete: if isAuthed();
+    }
+
+    match /vacations/{vacationId} {
+      allow read: if isAuthed();
+      allow create, update: if isAuthed() && isValidRange(request.resource.data) && request.resource.data.id == vacationId;
+      allow delete: if isAuthed();
+    }
+
+    match /holidays/{holidayId} {
+      allow read: if isAuthed();
+      allow create, update: if isAuthed() && isValidRange(request.resource.data) && request.resource.data.id == holidayId;
+      allow delete: if isAuthed();
+    }
+
+    // Legacy document kept for migration fallback.
+    match /kronus/appData {
+      allow read, write: if isAuthed();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -4,10 +4,14 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   updatePassword,
   reload,
   signOut,
   type Auth,
+  type ActionCodeSettings,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
@@ -53,8 +57,7 @@ export async function ensureFirebaseAuth(): Promise<boolean> {
   try {
     const firebaseAuth = getFirebaseAuth();
     const currentUser = firebaseAuth.currentUser;
-    if (!currentUser) return false;
-    return !!currentUser.emailVerified;
+    return !!currentUser;
   } catch (error) {
     console.warn('Firebase auth unavailable:', error);
     return false;
@@ -84,6 +87,18 @@ export async function signInFirebaseUser(email: string, password: string): Promi
 
 export async function sendFirebaseVerificationEmail(user: FirebaseUser): Promise<void> {
   await sendEmailVerification(user);
+}
+
+export async function sendFirebasePasswordResetEmail(email: string, actionCodeSettings?: ActionCodeSettings): Promise<void> {
+  await sendPasswordResetEmail(getFirebaseAuth(), email, actionCodeSettings);
+}
+
+export async function verifyFirebasePasswordResetCode(code: string): Promise<string> {
+  return await verifyPasswordResetCode(getFirebaseAuth(), code);
+}
+
+export async function confirmFirebasePasswordReset(code: string, newPassword: string): Promise<void> {
+  await confirmPasswordReset(getFirebaseAuth(), code, newPassword);
 }
 
 export async function reloadFirebaseUser(user: FirebaseUser): Promise<void> {

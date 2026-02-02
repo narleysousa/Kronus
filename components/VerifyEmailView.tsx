@@ -45,7 +45,7 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
             <MailCheck size={18} aria-hidden />
             <div>
               <p className="font-semibold">Olá, {userName.split(' ')[0]}!</p>
-              <p>Enviamos um código de 6 dígitos para <strong>{maskEmail(email)}</strong>.</p>
+              <p>Enviamos um link de verificação para <strong>{maskEmail(email)}</strong>.</p>
             </div>
           </div>
 

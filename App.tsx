@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, PunchLog, UserRole, DaySummary, PunchType, VacationRange, HolidayRange } from './types';
 import { KronusLogo } from './constants';
 import { cpfDigits, formatCpfDisplay } from './utils/cpfMask';
-import { generateCode, CODE_EXPIRY_MS } from './utils/code';
 import { isWeekend, getDayContribution } from './utils/weekend';
 import { isDateInHoliday } from './utils/bankOfHours';
 import { buildAuthPassword } from './utils/authPassword';
@@ -11,6 +10,9 @@ import {
   createFirebaseUser,
   signInFirebaseUser,
   sendFirebaseVerificationEmail,
+  sendFirebasePasswordResetEmail,
+  verifyFirebasePasswordResetCode,
+  confirmFirebasePasswordReset,
   reloadFirebaseUser,
   getFirebaseCurrentUser,
   getFirebaseAuth,
@@ -23,6 +25,7 @@ import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
 import { VerifyEmailView } from './components/VerifyEmailView';
 import { ForgotPasswordView } from './components/ForgotPasswordView';
+import { ResetPasswordView } from './components/ResetPasswordView';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { DashboardHome } from './components/DashboardHome';
@@ -37,7 +40,7 @@ import { HolidayModal } from './components/HolidayModal';
 import { ProductivityDashboard } from './components/ProductivityDashboard';
 import { ProfileView } from './components/ProfileView';
 
-type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'dashboard' | 'admin' | 'history' | 'productivity' | 'profile';
+type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'reset-password' | 'dashboard' | 'admin' | 'history' | 'productivity' | 'profile';
 
 const toLocalDateInput = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -104,10 +107,8 @@ const findMissingWorkday = (
 export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<PunchLog[]>([]);
-  const [pendingJustifications, setPendingJustifications] = useState<Record<string, string>>({});
   const [vacations, setVacations] = useState<Record<string, VacationRange[]>>({});
   const [holidays, setHolidays] = useState<Record<string, HolidayRange[]>>({});
-  const [relaxNotice, setRelaxNotice] = useState<Record<string, boolean>>({});
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [view, setView] = useState<AppView>('login');
@@ -121,6 +122,11 @@ export default function App() {
   const [verifyEmailAddress, setVerifyEmailAddress] = useState('');
   const [verifyEmailError, setVerifyEmailError] = useState('');
   const [verifyEmailNotice, setVerifyEmailNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [resetPasswordCode, setResetPasswordCode] = useState<string | null>(null);
+  const [resetPasswordEmail, setResetPasswordEmail] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const [resetPasswordChecking, setResetPasswordChecking] = useState(false);
+  const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
   const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
@@ -154,23 +160,43 @@ export default function App() {
   const safeLogs = Array.isArray(logs) ? logs : [];
   const usersRef = useRef<User[]>(safeUsers);
   const logsRef = useRef<PunchLog[]>(safeLogs);
-  const pendingRef = useRef<Record<string, string>>(pendingJustifications);
   const vacationsRef = useRef<Record<string, VacationRange[]>>(vacations);
   const holidaysRef = useRef<Record<string, HolidayRange[]>>(holidays);
-  const relaxNoticeRef = useRef<Record<string, boolean>>(relaxNotice);
 
   useEffect(() => {
     usersRef.current = safeUsers;
     logsRef.current = safeLogs;
-    pendingRef.current = pendingJustifications;
     vacationsRef.current = vacations;
     holidaysRef.current = holidays;
-    relaxNoticeRef.current = relaxNotice;
-  }, [safeUsers, safeLogs, pendingJustifications, vacations, holidays, relaxNotice]);
+  }, [safeUsers, safeLogs, vacations, holidays]);
 
   useEffect(() => {
     viewRef.current = view;
   }, [view]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const oobCode = params.get('oobCode');
+    if (mode === 'resetPassword' && oobCode) {
+      setView('reset-password');
+      setResetPasswordCode(oobCode);
+      setResetPasswordError('');
+      setResetPasswordChecking(true);
+      verifyFirebasePasswordResetCode(oobCode)
+        .then(email => {
+          setResetPasswordEmail(email);
+        })
+        .catch(() => {
+          setResetPasswordError('Link inválido ou expirado. Solicite um novo e-mail.');
+        })
+        .finally(() => {
+          setResetPasswordChecking(false);
+        });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (!Array.isArray(users)) {
@@ -205,19 +231,15 @@ export default function App() {
           {
             users: safeUsers,
             logs: safeLogs,
-            pendingJustifications,
             vacations,
             holidays,
-            relaxNotice,
           },
           data
         );
         setUsers(merged.users);
         setLogs(merged.logs);
-        setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
         setHolidays(merged.holidays);
-        setRelaxNotice(merged.relaxNotice);
       }
       firestoreLoadedRef.current = true;
     });
@@ -235,19 +257,15 @@ export default function App() {
         {
           users: safeUsers,
           logs: safeLogs,
-          pendingJustifications,
           vacations,
           holidays,
-          relaxNotice,
         },
         data
       );
       setUsers(merged.users);
       setLogs(merged.logs);
-      setPendingJustifications(merged.pendingJustifications);
       setVacations(merged.vacations);
       setHolidays(merged.holidays);
-      setRelaxNotice(merged.relaxNotice);
     });
     return () => {
       mounted = false;
@@ -286,19 +304,15 @@ export default function App() {
           {
             users: usersRef.current,
             logs: logsRef.current,
-            pendingJustifications: pendingRef.current,
             vacations: vacationsRef.current,
             holidays: holidaysRef.current,
-            relaxNotice: relaxNoticeRef.current,
           },
           data
         );
         setUsers(merged.users);
         setLogs(merged.logs);
-        setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
         setHolidays(merged.holidays);
-        setRelaxNotice(merged.relaxNotice);
         const user = merged.users.find(u => u.email.trim().toLowerCase() === (firebaseUser.email ?? '').toLowerCase());
         if (user) {
           setLocalEmailVerified(user.id, true);
@@ -317,17 +331,15 @@ export default function App() {
       mergeAndSetKronusData({
         users: safeUsers,
         logs: safeLogs,
-        pendingJustifications,
         vacations,
         holidays,
-        relaxNotice,
       });
       syncTimeoutRef.current = null;
     }, 800);
     return () => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [safeUsers, safeLogs, pendingJustifications, vacations, holidays, relaxNotice]);
+  }, [safeUsers, safeLogs, vacations, holidays]);
 
   useEffect(() => {
     return () => {
@@ -402,22 +414,20 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser) return;
-    const pendingDate = pendingJustifications[currentUser.id];
+    const pendingDate = currentUser.pendingJustification;
     if (!pendingDate) return;
     const alreadyHandled = userLogs.some(log => log.dateString === pendingDate);
     if (alreadyHandled) {
-      setPendingJustifications(prev => {
-        const next = { ...prev };
-        delete next[currentUser.id];
-        return next;
-      });
+      setUsers(prev => prev.map(u => (
+        u.id === currentUser.id ? { ...u, pendingJustification: '', updatedAt: Date.now() } : u
+      )));
       return;
     }
     setMissedJustificationDate(pendingDate);
     setMissedJustificationReason('Esqueci');
     setMissedJustificationError('');
     setMissedJustificationOpen(true);
-  }, [currentUser, pendingJustifications, userLogs, setPendingJustifications]);
+  }, [currentUser, userLogs]);
 
   const userVacations = useMemo(
     () => (currentUser ? (vacations[currentUser.id] ?? []) : []),
@@ -498,10 +508,12 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
     if (bankOfHours < 6) return;
-    if (relaxNotice[currentUser.id]) return;
+    if (currentUser.relaxNotice) return;
     setRelaxModalOpen(true);
-    setRelaxNotice(prev => ({ ...prev, [currentUser.id]: true }));
-  }, [bankOfHours, currentUser, relaxNotice, setRelaxNotice]);
+    setUsers(prev => prev.map(u => (
+      u.id === currentUser.id ? { ...u, relaxNotice: true, updatedAt: Date.now() } : u
+    )));
+  }, [bankOfHours, currentUser]);
 
   const lastWorkLog = useMemo(
     () => userLogs.find(log => log.type === 'IN' || log.type === 'OUT'),
@@ -581,19 +593,15 @@ export default function App() {
           {
             users: safeUsers,
             logs: safeLogs,
-            pendingJustifications,
             vacations,
             holidays,
-            relaxNotice,
           },
           data
         );
         setUsers(merged.users);
         setLogs(merged.logs);
-        setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
         setHolidays(merged.holidays);
-        setRelaxNotice(merged.relaxNotice);
         userToLogin = merged.users.find(u => u.email.trim().toLowerCase() === normalizedEmail);
       }
     }
@@ -674,6 +682,8 @@ export default function App() {
       role: isMasterAdmin ? UserRole.ADMIN : UserRole.USER,
       isMaster: isMasterAdmin,
       emailVerified: false,
+      pendingJustification: '',
+      relaxNotice: false,
       position: formData.get('position') as string,
       dailyHours: Number(formData.get('dailyHours')),
       workDays,
@@ -740,19 +750,15 @@ export default function App() {
           {
             users: safeUsers,
             logs: safeLogs,
-            pendingJustifications,
             vacations,
             holidays,
-            relaxNotice,
           },
           data
         );
         setUsers(merged.users);
         setLogs(merged.logs);
-        setPendingJustifications(merged.pendingJustifications);
         setVacations(merged.vacations);
         setHolidays(merged.holidays);
-        setRelaxNotice(merged.relaxNotice);
         user = merged.users.find(u => u.email.trim().toLowerCase() === firebaseUser.email?.toLowerCase());
       }
     }
@@ -783,6 +789,70 @@ export default function App() {
     await sendVerificationEmail();
   };
 
+  const handleRequestPasswordReset = async (email: string) => {
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : '';
+    await sendFirebasePasswordResetEmail(email, { url, handleCodeInApp: true });
+  };
+
+  const handleResetPassword = async (pinValue: string) => {
+    if (!resetPasswordCode) {
+      setResetPasswordError('Link inválido. Solicite um novo e-mail.');
+      return;
+    }
+    setResetPasswordSubmitting(true);
+    setResetPasswordError('');
+    const email = resetPasswordEmail.trim().toLowerCase();
+    if (!email) {
+      setResetPasswordError('Link inválido. Solicite um novo e-mail.');
+      setResetPasswordSubmitting(false);
+      return;
+    }
+    try {
+      const newPassword = buildAuthPassword(pinValue);
+      await confirmFirebasePasswordReset(resetPasswordCode, newPassword);
+      if (email) {
+        await signInFirebaseUser(email, newPassword);
+        const data = await getKronusData();
+        if (data) {
+          const merged = mergeKronusData(
+            {
+              users: safeUsers,
+              logs: safeLogs,
+              vacations,
+              holidays,
+            },
+            data
+          );
+          const target = merged.users.find(u => u.email.trim().toLowerCase() === email);
+          if (target) {
+            const updatedUser: User = { ...target, pin: pinValue, updatedAt: Date.now() };
+            const nextData = {
+              ...merged,
+              users: merged.users.map(u => (u.id === target.id ? updatedUser : u)),
+            };
+            setUsers(nextData.users);
+            setLogs(nextData.logs);
+            setVacations(nextData.vacations);
+            setHolidays(nextData.holidays);
+            await mergeAndSetKronusData(nextData);
+          }
+        }
+        await signOutFirebase();
+      }
+      setResetPasswordCode(null);
+      setResetPasswordEmail('');
+      setLoginEmail(email);
+      setPin('');
+      setView('login');
+    } catch {
+      setResetPasswordError('Não foi possível redefinir o PIN. O link pode estar expirado.');
+    } finally {
+      setResetPasswordSubmitting(false);
+    }
+  };
+
   const handleRemoveByCpf = (cpfInput: string, pinInput: string): void => {
     setRemoveByCpfMessage(null);
     const normalized = cpfDigits(cpfInput);
@@ -810,17 +880,12 @@ export default function App() {
     }
     setUsers(prev => prev.filter(u => u.id !== user.id));
     setLogs(prev => prev.filter(l => l.userId !== user.id));
-    setPendingJustifications(prev => {
-      const next = { ...prev };
-      delete next[user.id];
-      return next;
-    });
     setVacations(prev => {
       const next = { ...prev };
       delete next[user.id];
       return next;
     });
-    setRelaxNotice(prev => {
+    setHolidays(prev => {
       const next = { ...prev };
       delete next[user.id];
       return next;
@@ -847,10 +912,12 @@ export default function App() {
 
     setLogs(prev => [newLog, ...prev]);
 
-    if (type === 'IN' && !hadPunchToday && !pendingJustifications[currentUser.id]) {
+    if (type === 'IN' && !hadPunchToday && !currentUser.pendingJustification) {
       const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
       if (missingDate) {
-        setPendingJustifications(prev => ({ ...prev, [currentUser.id]: missingDate }));
+        setUsers(prev => prev.map(u => (
+          u.id === currentUser.id ? { ...u, pendingJustification: missingDate, updatedAt: Date.now() } : u
+        )));
       }
     }
   };
@@ -1015,11 +1082,9 @@ export default function App() {
     };
 
     setLogs(prev => [newLog, ...prev]);
-    setPendingJustifications(prev => {
-      const next = { ...prev };
-      delete next[currentUser.id];
-      return next;
-    });
+    setUsers(prev => prev.map(u => (
+      u.id === currentUser.id ? { ...u, pendingJustification: '', updatedAt: Date.now() } : u
+    )));
     setMissedJustificationOpen(false);
     setMissedJustificationError('');
   };
@@ -1048,22 +1113,12 @@ export default function App() {
   const deleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
     setLogs(prev => prev.filter(l => l.userId !== userId));
-    setPendingJustifications(prev => {
-      const next = { ...prev };
-      delete next[userId];
-      return next;
-    });
     setVacations(prev => {
       const next = { ...prev };
       delete next[userId];
       return next;
     });
     setHolidays(prev => {
-      const next = { ...prev };
-      delete next[userId];
-      return next;
-    });
-    setRelaxNotice(prev => {
       const next = { ...prev };
       delete next[userId];
       return next;
@@ -1216,18 +1271,27 @@ export default function App() {
       <ForgotPasswordView
         users={safeUsers}
         onBack={() => setView('login')}
-        onSuccess={(userWithNewPin) => {
-          if (!userWithNewPin.emailVerified) {
-            openVerifyEmailView(userWithNewPin.id, userWithNewPin.email);
-            sendVerificationEmail();
-            return;
-          }
-          setCurrentUser(userWithNewPin);
-          setView('dashboard');
+        onRequestReset={handleRequestPasswordReset}
+      />
+    );
+  }
+
+  if (view === 'reset-password') {
+    return (
+      <ResetPasswordView
+        email={resetPasswordEmail}
+        isVerifying={resetPasswordChecking}
+        isSubmitting={resetPasswordSubmitting}
+        error={resetPasswordError || undefined}
+        onSubmit={handleResetPassword}
+        onBack={() => {
+          setResetPasswordCode(null);
+          setResetPasswordEmail('');
+          setResetPasswordError('');
+          setResetPasswordChecking(false);
+          setResetPasswordSubmitting(false);
+          setView('login');
         }}
-        onUpdatePin={handleUpdatePin}
-        generateCode={generateCode}
-        codeExpiryMs={CODE_EXPIRY_MS}
       />
     );
   }
