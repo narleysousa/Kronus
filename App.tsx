@@ -204,6 +204,7 @@ export default function App() {
 
   const safeUsers = Array.isArray(users) ? users : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
+  const visibleLogs = useMemo(() => safeLogs.filter(log => !log.deletedAt), [safeLogs]);
   const usersRef = useRef<User[]>(safeUsers);
   const logsRef = useRef<PunchLog[]>(safeLogs);
   const vacationsRef = useRef<Record<string, VacationRange[]>>(vacations);
@@ -439,8 +440,8 @@ export default function App() {
 
   const userLogs = useMemo(() => {
     if (!currentUser) return [];
-    return safeLogs.filter(l => l.userId === currentUser.id).sort((a, b) => b.timestamp - a.timestamp);
-  }, [safeLogs, currentUser]);
+    return visibleLogs.filter(l => l.userId === currentUser.id).sort((a, b) => b.timestamp - a.timestamp);
+  }, [visibleLogs, currentUser]);
 
   const setLocalEmailVerified = (userId: string, verified: boolean) => {
     setUsers(prev => prev.map(u => (
@@ -1208,8 +1209,14 @@ export default function App() {
       setConfirmDelete(null);
       return;
     }
-    void deleteKronusDocs({ logs: [id] });
-    setLogs(prev => prev.filter(l => l.id !== id));
+    const deletedAt = Date.now();
+    const updatedLog = target
+      ? { ...target, deletedAt, updatedAt: deletedAt }
+      : { id, userId: '', timestamp: deletedAt, type: 'JUSTIFIED' as PunchType, dateString: toLocalDateInput(deletedAt), deletedAt, updatedAt: deletedAt };
+    if (target) {
+      setLogs(prev => prev.map(l => (l.id === id ? updatedLog : l)));
+      void upsertLogDoc(updatedLog);
+    }
     confirmDeleteIdRef.current = null;
     setConfirmDelete(null);
   };
@@ -1554,7 +1561,7 @@ export default function App() {
           <AdminPanel
             currentUser={currentUser}
             users={safeUsers}
-            logs={safeLogs}
+            logs={visibleLogs}
             vacations={vacations}
             holidays={holidays}
             onPromoteToMaster={currentUser?.isMaster ? promoteToMaster : undefined}

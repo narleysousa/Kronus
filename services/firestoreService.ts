@@ -88,10 +88,14 @@ const normalizeUsers = (users: User[]): User[] => users.map(user => {
   };
 });
 
-const normalizeLogs = (logs: PunchLog[]): PunchLog[] => logs.map(log => ({
-  ...log,
-  updatedAt: log.updatedAt ?? log.timestamp ?? Date.now(),
-}));
+const normalizeLogs = (logs: PunchLog[]): PunchLog[] => logs.map(log => {
+  const baseUpdatedAt = log.updatedAt ?? log.timestamp ?? Date.now();
+  const deletedAt = log.deletedAt ?? 0;
+  return {
+    ...log,
+    updatedAt: deletedAt > baseUpdatedAt ? deletedAt : baseUpdatedAt,
+  };
+});
 
 const normalizeVacationRange = (range: VacationRange): VacationRange => ({
   ...range,

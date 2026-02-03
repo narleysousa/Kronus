@@ -33,6 +33,7 @@ export interface PunchLog {
   dateString: string; // YYYY-MM-DD
   justification?: string;
   justificationKind?: 'personal' | 'missed';
+  deletedAt?: number;
   updatedAt?: number;
 }
 
