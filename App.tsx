@@ -1195,10 +1195,15 @@ export default function App() {
     setMissedJustificationError('');
   };
 
-  const deleteLog = (id: string) => {
-    const target = logsRef.current.find(log => log.id === id);
-    if (!target) return;
-    if (!canManageLogsForUser(currentUser, target.userId)) {
+  const deleteLog = (id: string, log?: PunchLog) => {
+    const target = log ?? logsRef.current.find(item => item.id === id);
+    if (target) {
+      if (!canManageLogsForUser(currentUser, target.userId)) {
+        confirmDeleteIdRef.current = null;
+        setConfirmDelete(null);
+        return;
+      }
+    } else if (!isMasterAdmin(currentUser)) {
       confirmDeleteIdRef.current = null;
       setConfirmDelete(null);
       return;
@@ -1209,11 +1214,12 @@ export default function App() {
     setConfirmDelete(null);
   };
 
-  const openConfirmDeleteLog = (id: string) => {
-    const target = logsRef.current.find(log => log.id === id);
-    if (!target || !canManageLogsForUser(currentUser, target.userId)) return;
+  const openConfirmDeleteLog = (id: string, log?: PunchLog) => {
+    const target = log ?? logsRef.current.find(item => item.id === id);
+    if (target && !canManageLogsForUser(currentUser, target.userId)) return;
+    if (!target && !isMasterAdmin(currentUser)) return;
     confirmDeleteIdRef.current = id;
-    setConfirmDelete({ id });
+    setConfirmDelete({ id, log: target });
   };
 
   const promoteToMaster = (userId: string) => {
@@ -1589,7 +1595,7 @@ export default function App() {
         danger
         onConfirm={() => {
           const id = confirmDeleteIdRef.current ?? confirmDelete?.id;
-          if (id) deleteLog(id);
+          if (id) deleteLog(id, confirmDelete?.log);
         }}
         onCancel={() => { confirmDeleteIdRef.current = null; setConfirmDelete(null); }}
       />

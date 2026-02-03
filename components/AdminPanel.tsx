@@ -16,7 +16,7 @@ interface AdminPanelProps {
   onPromoteToMaster?: (userId: string) => void;
   onDemoteToUser?: (userId: string) => void;
   onRequestDeleteUser: (user: User) => void;
-  onConfirmDeleteLog: (id: string) => void;
+  onConfirmDeleteLog: (id: string, log?: PunchLog) => void;
   onUpdateUser: (userId: string, updates: Partial<User>) => void;
   onUpdateLog: (logId: string, updates: Partial<PunchLog>) => void;
   onAddLog: (log: PunchLog) => void;
@@ -773,7 +773,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => onConfirmDeleteLog(log.id)}
+                                  onClick={() => onConfirmDeleteLog(log.id, log)}
                                   className="text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-lg transition-colors shrink-0"
                                   aria-label="Excluir registro"
                                 >

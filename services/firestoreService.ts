@@ -210,6 +210,34 @@ const deleteCollectionDocs = async (collectionName: string, ids: string[]): Prom
   }
 };
 
+const pruneLegacyRanges = <T extends { id: string }>(
+  rangesByUser: Record<string, T[]>,
+  idsToRemove: Set<string>
+): Record<string, T[]> => {
+  if (!idsToRemove.size) return rangesByUser;
+  const next: Record<string, T[]> = {};
+  Object.entries(rangesByUser).forEach(([userId, ranges]) => {
+    next[userId] = (ranges ?? []).filter(range => !idsToRemove.has(range.id));
+  });
+  return next;
+};
+
+const pruneLegacyData = (
+  data: KronusData,
+  ids: Partial<{ users: string[]; logs: string[]; vacations: string[]; holidays: string[] }>
+): KronusData => {
+  const userIds = new Set(ids.users ?? []);
+  const logIds = new Set(ids.logs ?? []);
+  const vacationIds = new Set(ids.vacations ?? []);
+  const holidayIds = new Set(ids.holidays ?? []);
+  return {
+    users: userIds.size ? data.users.filter(user => !userIds.has(user.id)) : data.users,
+    logs: logIds.size ? data.logs.filter(log => !logIds.has(log.id)) : data.logs,
+    vacations: pruneLegacyRanges(data.vacations, vacationIds),
+    holidays: pruneLegacyRanges(data.holidays, holidayIds),
+  };
+};
+
 export function mergeKronusData(local: KronusData, remote: KronusData): KronusData {
   const normalizedLocal = normalizeData(local);
   const normalizedRemote = normalizeData(remote);
@@ -521,6 +549,17 @@ export async function deleteKronusDocs(
     await deleteCollectionDocs(LOGS_COLLECTION, ids.logs ?? []);
     await deleteCollectionDocs(VACATIONS_COLLECTION, ids.vacations ?? []);
     await deleteCollectionDocs(HOLIDAYS_COLLECTION, ids.holidays ?? []);
+    try {
+      const legacyData = await readLegacyData();
+      if (legacyData) {
+        const pruned = pruneLegacyData(legacyData, ids);
+        const cleaned = stripUndefined(buildLegacyData(pruned));
+        const db = getFirebaseDb();
+        await setDoc(doc(db, LEGACY_COLLECTION, LEGACY_DOC_ID), cleaned, { merge: false });
+      }
+    } catch (legacyError) {
+      console.warn('Firestore deleteKronusDocs legado:', legacyError);
+    }
   } catch (e) {
     console.warn('Firestore deleteKronusDocs:', e);
   }
