@@ -44,7 +44,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1tsqC6I--5OVgsXF3-TgW1X
    **https://narleysousa.github.io/Kronus/**
 
 **Se o site ficar em branco ou mostrar erro de MIME type / 404 (index.tsx ou index.css):**  
-A origem do Pages está errada. O GitHub está servindo o **código-fonte** (onde `.tsx` é enviado com MIME type errado). Corrija assim:
+A origem do Pages está errada. O GitHub está servindo o **código-fonte** (onde `.tsx` é enviado com MIME type errado).. Corrija assim:
 
 1. No repositório: **Settings** → **Pages**.
 2. Em **Build and deployment** → **Source**, selecione **GitHub Actions** (não "Deploy from a branch").
