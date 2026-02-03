@@ -105,7 +105,7 @@ const createDefaultLogDraft = (): LogDraft => {
 /** Master = acesso total; usuário comum = só os próprios registros. */
 const canManageLogsOf = (currentUser: User | null, targetUser: User): boolean => {
   if (!currentUser) return false;
-  if (currentUser.role === UserRole.ADMIN) return true;
+  if (currentUser.isMaster || currentUser.role === UserRole.ADMIN) return true;
   return targetUser.id === currentUser.id;
 };
 
@@ -312,7 +312,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </header>
 
-      {currentUser?.role === UserRole.ADMIN && onRequestDeleteByCpf && (
+      {(currentUser?.isMaster || currentUser?.role === UserRole.ADMIN) && onRequestDeleteByCpf && (
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Remover usuário por CPF</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
@@ -352,7 +352,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       <div className="grid grid-cols-1 gap-6">
         {users.map(user => {
-          const isUserAdmin = user.role === UserRole.ADMIN;
+          const isUserAdmin = user.role === UserRole.ADMIN || user.isMaster;
           const isMasterUser = !!user.isMaster;
           const userLogs = logs.filter(l => l.userId === user.id).sort((a, b) => b.timestamp - a.timestamp);
           const isEditingUser = editingUserId === user.id;
@@ -462,7 +462,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       Rebaixar a usuário
                     </button>
                   )}
-                  {currentUser?.role === UserRole.ADMIN && user.id !== currentUser.id && (
+                  {(currentUser?.isMaster || currentUser?.role === UserRole.ADMIN) && user.id !== currentUser.id && (
                     <button
                       type="button"
                       onClick={() => onRequestDeleteUser(user)}

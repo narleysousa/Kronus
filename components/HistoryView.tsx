@@ -8,6 +8,7 @@ interface HistoryViewProps {
   userLogs: PunchLog[];
   /** Nome do usuário (para nome do arquivo na exportação). */
   userName?: string;
+  canDelete?: (log: PunchLog) => boolean;
   onConfirmDelete: (id: string, log: PunchLog) => void;
 }
 
@@ -46,7 +47,7 @@ const formatLogTime = (log: PunchLog, includeSeconds = true) => {
   return new Date(log.timestamp).toLocaleTimeString([], timeOptions);
 };
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, onConfirmDelete }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, canDelete, onConfirmDelete }) => {
   const durationMap = useMemo(() => {
     const map: Record<string, number> = {};
     userLogs.forEach(log => {
@@ -127,14 +128,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onConfirmDelete(log.id, log)}
-                      className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
-                      aria-label={`Excluir registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {canDelete?.(log) !== false && (
+                      <button
+                        type="button"
+                        onClick={() => onConfirmDelete(log.id, log)}
+                        className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
+                        aria-label={`Excluir registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -160,14 +163,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ userLogs, userName, on
                   {typeInfo.label}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => onConfirmDelete(log.id, log)}
-                className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg shrink-0"
-                aria-label="Excluir registro"
-              >
-                <Trash2 size={18} />
-              </button>
+              {canDelete?.(log) !== false && (
+                <button
+                  type="button"
+                  onClick={() => onConfirmDelete(log.id, log)}
+                  className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg shrink-0"
+                  aria-label="Excluir registro"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           );
         })}

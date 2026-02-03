@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, view, onNavigate,
         <TrendingUp size={20} aria-hidden />
         Banco de Horas (detalhes)
       </button>
-      {currentUser?.role === UserRole.ADMIN && (
+      {(currentUser?.isMaster || currentUser?.role === UserRole.ADMIN) && (
         <button
           type="button"
           onClick={() => onNavigate('admin')}

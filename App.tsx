@@ -91,6 +91,7 @@ const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const isMasterEmail = (email: string) => normalizeEmail(email) === normalizeEmail(MASTER_EMAIL);
+const isMasterAdmin = (user: User | null) => !!user && (user.isMaster || user.role === UserRole.ADMIN);
 
 const buildSignature = (data: {
   users: User[];
@@ -1195,6 +1196,13 @@ export default function App() {
   };
 
   const deleteLog = (id: string) => {
+    const target = logsRef.current.find(log => log.id === id);
+    if (!target) return;
+    if (!canManageLogsForUser(currentUser, target.userId)) {
+      confirmDeleteIdRef.current = null;
+      setConfirmDelete(null);
+      return;
+    }
     void deleteKronusDocs({ logs: [id] });
     setLogs(prev => prev.filter(l => l.id !== id));
     confirmDeleteIdRef.current = null;
@@ -1202,6 +1210,8 @@ export default function App() {
   };
 
   const openConfirmDeleteLog = (id: string) => {
+    const target = logsRef.current.find(log => log.id === id);
+    if (!target || !canManageLogsForUser(currentUser, target.userId)) return;
     confirmDeleteIdRef.current = id;
     setConfirmDelete({ id });
   };
@@ -1245,7 +1255,7 @@ export default function App() {
   };
 
   const handleRequestDeleteUser = (user: User) => {
-    if (currentUser?.role !== UserRole.ADMIN) return;
+    if (!isMasterAdmin(currentUser)) return;
     if (isMasterEmail(user.email)) {
       setAdminRemoveByCpfMessage({ type: 'error', text: 'Este usuário master não pode ser excluído.' });
       return;
@@ -1258,7 +1268,7 @@ export default function App() {
 
   const handleRequestDeleteUserByCpf = (cpfInput: string) => {
     setAdminRemoveByCpfMessage(null);
-    if (currentUser?.role !== UserRole.ADMIN) {
+    if (!isMasterAdmin(currentUser)) {
       setAdminRemoveByCpfMessage({ type: 'error', text: 'Apenas Master pode remover usuários.' });
       return;
     }
@@ -1287,7 +1297,7 @@ export default function App() {
   };
 
   const handleConfirmDeleteUser = () => {
-    if (!confirmDeleteUser || !currentUser || currentUser.role !== UserRole.ADMIN) return;
+    if (!confirmDeleteUser || !currentUser || !isMasterAdmin(currentUser)) return;
     const pinStr = String(deleteUserPin ?? '').trim();
     const currentPinStr = String(currentUser.pin ?? '').trim();
     if (pinStr.length !== 4 || pinStr !== currentPinStr) {
@@ -1303,7 +1313,7 @@ export default function App() {
 
   const canManageLogsForUser = (actor: User | null, targetUserId: string): boolean => {
     if (!actor) return false;
-    if (actor.role === UserRole.ADMIN) return true;
+    if (isMasterAdmin(actor)) return true;
     return actor.id === targetUserId;
   };
 
@@ -1467,7 +1477,7 @@ export default function App() {
 
       <BottomNav
         view={view}
-        isAdmin={currentUser?.role === UserRole.ADMIN}
+        isAdmin={isMasterAdmin(currentUser)}
         onNavigate={(v) => setView(v)}
         onLogout={() => {
           signOutFirebase();
@@ -1525,11 +1535,16 @@ export default function App() {
           <HistoryView
             userLogs={userLogs}
             userName={currentUser?.name}
-            onConfirmDelete={(id, log) => { confirmDeleteIdRef.current = id; setConfirmDelete({ id, log }); }}
+            canDelete={log => canManageLogsForUser(currentUser, log.userId)}
+            onConfirmDelete={(id, log) => {
+              if (!canManageLogsForUser(currentUser, log.userId)) return;
+              confirmDeleteIdRef.current = id;
+              setConfirmDelete({ id, log });
+            }}
           />
         )}
 
-        {view === 'admin' && currentUser?.role === UserRole.ADMIN && (
+        {view === 'admin' && isMasterAdmin(currentUser) && (
           <AdminPanel
             currentUser={currentUser}
             users={safeUsers}
