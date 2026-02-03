@@ -1,14 +1,14 @@
 import type { User, PunchLog, VacationRange, HolidayRange } from '../types';
 import { getDayContribution, isWeekend } from './weekend';
 
-const isDateInVacation = (dateString: string, ranges: VacationRange[]) => {
+export function isDateInVacation(dateString: string, ranges: VacationRange[]): boolean {
   const value = new Date(`${dateString}T00:00:00`).getTime();
   return ranges.some(range => {
     const start = new Date(`${range.startDate}T00:00:00`).getTime();
     const end = new Date(`${range.endDate}T00:00:00`).getTime();
     return value >= start && value <= end;
   });
-};
+}
 
 export function isDateInHoliday(dateString: string, ranges: HolidayRange[]): boolean {
   const value = new Date(`${dateString}T00:00:00`).getTime();

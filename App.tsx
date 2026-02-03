@@ -1481,7 +1481,7 @@ export default function App() {
         }}
       />
 
-      <main className="flex-grow p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
+      <main className="flex-grow px-4 md:px-10 pt-4 md:pt-6 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
         <div className="lg:hidden mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KronusLogo className="w-8 h-8 text-indigo-600 dark:text-indigo-400" aria-hidden />
@@ -1507,6 +1507,8 @@ export default function App() {
               summaries={summaries}
               bankOfHours={bankOfHours}
               isClockedIn={isClockedIn}
+              userVacations={userVacations}
+              userHolidays={userHolidays}
               emailNotice={registerEmailNotice}
               onDismissEmailNotice={() => setRegisterEmailNotice(null)}
               onPunch={handlePunch}

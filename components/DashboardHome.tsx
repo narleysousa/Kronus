@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, History, ChevronRight, TrendingUp, Calendar, AlertCircle, CheckCircle2, X } from 'lucide-react';
-import { User, DaySummary } from '../types';
+import { User, DaySummary, VacationRange, HolidayRange } from '../types';
 import { WEEK_DAYS, PUNCH_DEADLINE_HOUR } from '../constants';
 import { formatDurationMs, formatHoursToHms } from '../utils/formatDuration';
 import { isWeekend } from '../utils/weekend';
+import { isDateInVacation, isDateInHoliday } from '../utils/bankOfHours';
 
 function todayDateString(now: number): string {
   const d = new Date(now);
@@ -23,6 +24,8 @@ interface DashboardHomeProps {
   summaries: DaySummary[];
   bankOfHours: number;
   isClockedIn: boolean;
+  userVacations: VacationRange[];
+  userHolidays: HolidayRange[];
   emailNotice?: { type: 'success' | 'error'; text: string } | null;
   onDismissEmailNotice?: () => void;
   onPunch: () => void;
@@ -45,6 +48,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   onDismissEmailNotice,
   onPunch,
   onGoToHistory,
+  userVacations,
+  userHolidays,
   onOpenPersonalCommitment,
   onOpenHoliday,
   onOpenVacation,
@@ -53,6 +58,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   const [now, setNow] = useState(() => Date.now());
 
   const todayStr = useMemo(() => todayDateString(now), [now]);
+  const isTodayVacation = useMemo(() => isDateInVacation(todayStr, userVacations), [todayStr, userVacations]);
+  const isTodayHoliday = useMemo(() => isDateInHoliday(todayStr, userHolidays), [todayStr, userHolidays]);
   const todaySummary = useMemo(() => summaries.find(s => s.date === todayStr), [summaries, todayStr]);
   const todayWdId = useMemo(() => todayWorkDayId(now), [now]);
   const isTodayWorkDay = useMemo(
@@ -153,7 +160,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <button
           type="button"
           onClick={onOpenHoliday}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-sm font-bold transition-colors"
+          className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border ${
+            isTodayHoliday
+              ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-600 ring-2 ring-amber-400 dark:ring-amber-500'
+              : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800'
+          }`}
         >
           <Calendar size={18} aria-hidden />
           Feriados
@@ -161,7 +172,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <button
           type="button"
           onClick={onOpenVacation}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 text-sm font-bold transition-colors"
+          className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border ${
+            isTodayVacation
+              ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-600 ring-2 ring-emerald-400 dark:ring-emerald-500'
+              : 'bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800'
+          }`}
         >
           <Calendar size={18} aria-hidden />
           Férias
@@ -177,24 +192,34 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               Status Atual
             </div>
             <h3 className="text-4xl font-bold mb-2">
-              {isClockedIn ? 'Você está trabalhando' : 'Ponto não batido'}
+              {isTodayVacation
+                ? 'Dia de férias'
+                : isTodayHoliday
+                  ? 'Feriado / recesso'
+                  : isClockedIn
+                    ? 'Você está trabalhando'
+                    : 'Ponto não batido'}
             </h3>
             <p className="text-indigo-100 dark:text-indigo-200 text-lg opacity-90">
-              {isClockedIn
-                ? `Início do turno às ${lastClockInTime ? new Date(lastClockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}`
-                : 'Bata o ponto para iniciar sua jornada de hoje.'}
+              {isTodayVacation
+                ? 'Hoje não conta para meta nem banco de horas.'
+                : isTodayHoliday
+                  ? 'Dia abonado.'
+                  : isClockedIn
+                    ? `Início do turno às ${lastClockInTime ? new Date(lastClockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}`
+                    : 'Bata o ponto para iniciar sua jornada de hoje.'}
             </p>
-            {isClockedIn && countdownRemainingMs !== null && overtimeMs === null && countdownRemainingMs > 0 && (
+            {!isTodayVacation && !isTodayHoliday && isClockedIn && countdownRemainingMs !== null && overtimeMs === null && countdownRemainingMs > 0 && (
               <p className="mt-3 text-red-400 font-bold text-xl tabular-nums" aria-live="polite">
                 Faltam {formatDurationMs(countdownRemainingMs)} para a meta
               </p>
             )}
-            {isClockedIn && overtimeMs !== null && (
+            {!isTodayVacation && !isTodayHoliday && isClockedIn && overtimeMs !== null && (
               <p className="mt-3 text-emerald-300 font-bold text-xl tabular-nums" aria-live="polite">
                 {isWeekendOvertime ? 'Horas extras (1,5x):' : 'Horas extras:'} +{formatDurationMs(overtimeMs)}
               </p>
             )}
-            {!isClockedIn && isTodayWorkDay && !hasPunchedInToday && (
+            {!isTodayVacation && !isTodayHoliday && !isClockedIn && isTodayWorkDay && !hasPunchedInToday && (
               punchInCountdownMs !== null ? (
                 <p className="mt-3 text-amber-200 font-bold text-xl tabular-nums" aria-live="polite">
                   Faltam {formatDurationMs(punchInCountdownMs)} para bater o ponto (prazo: {PUNCH_DEADLINE_HOUR}h)
@@ -230,8 +255,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           </div>
         </div>
 
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" aria-hidden />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-indigo-400/20 rounded-full blur-2xl" aria-hidden />
+        <div className="absolute top-4 right-4 w-48 h-48 bg-white/10 rounded-full blur-2xl" aria-hidden />
+        <div className="absolute bottom-4 left-4 w-40 h-40 bg-indigo-400/20 rounded-full blur-xl" aria-hidden />
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between">
