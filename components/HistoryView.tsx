@@ -66,7 +66,8 @@ const toLocalTimeInput = (timestamp: number) => {
   const date = new Date(timestamp);
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 };
 
 const buildEndTime = (date: string, time: string) => {
@@ -356,12 +357,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Horário</label>
-                  <input
-                    type="time"
-                    value={logDraft.time}
-                    onChange={(e) => updateDraft({ time: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                  />
+                <input
+                  type="time"
+                  step="1"
+                  value={logDraft.time}
+                  onChange={(e) => updateDraft({ time: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Tipo</label>
@@ -380,12 +382,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               {logDraft.type === 'JUSTIFIED' && (
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Horário final</label>
-                  <input
-                    type="time"
-                    value={logDraft.endTime ?? ''}
-                    onChange={(e) => updateDraft({ endTime: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                  />
+                <input
+                  type="time"
+                  step="1"
+                  value={logDraft.endTime ?? ''}
+                  onChange={(e) => updateDraft({ endTime: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                />
                 </div>
               )}
 
