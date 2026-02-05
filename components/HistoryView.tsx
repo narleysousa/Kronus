@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { History, Trash2, FileSpreadsheet, Edit2, Save, X } from 'lucide-react';
 import { PunchLog, PunchType } from '../types';
+import { isWeekend } from '../utils/weekend';
 import { formatDurationMs } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
 
@@ -84,6 +85,9 @@ const createLogDraft = (log: PunchLog): LogDraft => ({
     : '',
   type: log.type,
 });
+
+const formatWeekday = (timestamp: number) =>
+  new Date(timestamp).toLocaleDateString('pt-BR', { weekday: 'short' });
 
 export const HistoryView: React.FC<HistoryViewProps> = ({
   userLogs,
@@ -217,6 +221,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-600">
               <tr>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Data</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Dia</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Horário</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider text-right">Ações</th>
@@ -225,10 +230,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
               {userLogs.map(log => {
                 const typeInfo = getLogTypeInfo(log);
+                const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
+                const isWeekendDay = isWeekend(dateString);
                 return (
                   <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-slate-100">
                       {new Date(log.timestamp).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className={`px-6 py-4 text-sm font-semibold ${isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                      {formatWeekday(log.timestamp)}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${typeInfo.badgeClass}`}>
@@ -277,11 +287,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
           {userLogs.map(log => {
             const typeInfo = getLogTypeInfo(log);
+            const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
+            const isWeekendDay = isWeekend(dateString);
+            const weekdayLabel = formatWeekday(log.timestamp);
             return (
               <div key={log.id} className="p-4 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    {new Date(log.timestamp).toLocaleDateString('pt-BR')} · {formatLogTime(log, false)}
+                    <span>{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
+                    <span className="mx-1">·</span>
+                    <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
+                      {weekdayLabel}
+                    </span>
+                    <span className="mx-1">·</span>
+                    <span>{formatLogTime(log, false)}</span>
                     {durationMap[log.id] !== undefined && (
                       <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
                     )}
