@@ -10,6 +10,9 @@ import {
   updatePassword,
   reload,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type Auth,
   type ActionCodeSettings,
   type User as FirebaseUser,
@@ -89,6 +92,10 @@ export async function createFirebaseUser(email: string, password: string): Promi
 export async function signInFirebaseUser(email: string, password: string): Promise<FirebaseUser> {
   const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
   return result.user;
+}
+
+export async function setFirebaseAuthPersistence(remember: boolean): Promise<void> {
+  await setPersistence(getFirebaseAuth(), remember ? browserLocalPersistence : browserSessionPersistence);
 }
 
 export async function sendFirebaseVerificationEmail(user: FirebaseUser): Promise<void> {

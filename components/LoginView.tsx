@@ -9,6 +9,8 @@ interface LoginViewProps {
   setLoginEmail: (v: string) => void;
   pin: string;
   setPin: (v: string) => void;
+  rememberLogin: boolean;
+  setRememberLogin: (v: boolean) => void;
   authError: string;
   onLogin: () => void;
   onGoToRegister: () => void;
@@ -25,11 +27,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
   setLoginEmail,
   pin,
   setPin,
+  rememberLogin,
+  setRememberLogin,
   authError,
   onLogin,
   onGoToRegister,
   onForgotPassword,
 }) => {
+  const canSubmit = pin.length >= 4 && isEmailValid(loginEmail);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    onLogin();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 relative">
       <ThemeToggle compact dropdownPosition="down" className="absolute top-4 right-4 z-10" />
@@ -42,7 +54,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <p className="text-indigo-100 mt-2 opacity-90">Gestão de Ponto Inteligente</p>
         </div>
 
-        <div className="p-8 space-y-6">
+        <form className="p-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-mail</label>
             <input
@@ -63,6 +75,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <PinInput value={pin} onChange={setPin} aria-label="PIN de acesso" />
           </div>
 
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+            <input
+              id="remember-login"
+              type="checkbox"
+              checked={rememberLogin}
+              onChange={(e) => setRememberLogin(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Lembrar login
+          </label>
+
           <button
             type="button"
             onClick={onForgotPassword}
@@ -79,9 +102,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
           )}
 
           <button
-            type="button"
-            onClick={onLogin}
-            disabled={pin.length < 4 || !isEmailValid(loginEmail)}
+            type="submit"
+            disabled={!canSubmit}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
           >
             <LogIn size={20} aria-hidden />
@@ -102,7 +124,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <UserPlus size={18} aria-hidden />
             Criar Nova Conta
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );

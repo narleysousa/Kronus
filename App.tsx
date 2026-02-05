@@ -30,6 +30,7 @@ import {
   updateFirebasePassword,
   signOutFirebase,
   waitForAuthState,
+  setFirebaseAuthPersistence,
 } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -160,6 +161,7 @@ export default function App() {
   const viewRef = useRef<AppView>('login');
   const [pin, setPin] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
+  const [rememberLogin, setRememberLogin] = useState(true);
   const [authError, setAuthError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [registerFormError, setRegisterFormError] = useState('');
@@ -627,6 +629,7 @@ export default function App() {
     const password = buildAuthPassword(pin);
     let firebaseUser;
     try {
+      await setFirebaseAuthPersistence(rememberLogin);
       firebaseUser = await signInFirebaseUser(normalizedEmail, password);
     } catch (error: any) {
       const code = error?.code as string | undefined;
@@ -1374,6 +1377,8 @@ export default function App() {
           setLoginEmail={setLoginEmail}
           pin={pin}
           setPin={setPin}
+          rememberLogin={rememberLogin}
+          setRememberLogin={setRememberLogin}
           authError={authError}
           onLogin={handleLogin}
           onGoToRegister={() => {
@@ -1549,11 +1554,13 @@ export default function App() {
             userLogs={userLogs}
             userName={currentUser?.name}
             canDelete={log => canManageLogsForUser(currentUser, log.userId)}
+            canEdit={log => canManageLogsForUser(currentUser, log.userId)}
             onConfirmDelete={(id, log) => {
               if (!canManageLogsForUser(currentUser, log.userId)) return;
               confirmDeleteIdRef.current = id;
               setConfirmDelete({ id, log });
             }}
+            onUpdateLog={updateLog}
           />
         )}
 
