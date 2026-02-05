@@ -65,13 +65,13 @@ export const PinInput: React.FC<PinInputProps> = ({ value, onChange, 'aria-label
           onChange={(e) => handleInputChange(i, e)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           aria-label={ariaLabel ? `${ariaLabel} dígito ${i + 1}` : `PIN dígito ${i + 1}`}
-          className="w-14 h-16 text-center text-3xl font-bold border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none bg-white shadow-sm transition-all"
+          className="w-14 h-16 text-center text-3xl font-bold border-2 border-slate-200 dark:border-slate-600 rounded-2xl focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/20 focus:outline-none bg-white dark:bg-slate-700 dark:text-slate-100 shadow-sm transition-all"
         />
       ))}
       <button
         type="button"
         onClick={() => setVisible(v => !v)}
-        className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+        className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
         aria-label={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
         title={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
       >

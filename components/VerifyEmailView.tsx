@@ -23,25 +23,25 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
   onBack,
 }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
             aria-label="Voltar"
           >
             <ArrowLeft size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <KronusLogo className="w-8 h-8 text-indigo-600" aria-hidden />
-            <h2 className="text-lg font-bold text-slate-800">Confirme seu e-mail</h2>
+            <KronusLogo className="w-8 h-8 text-indigo-600 dark:text-indigo-400" aria-hidden />
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Confirme seu e-mail</h2>
           </div>
         </div>
 
         <div className="p-8 space-y-6">
-          <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-700">
+          <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 p-4 text-sm text-indigo-700 dark:text-indigo-300">
             <MailCheck size={18} aria-hidden />
             <div>
               <p className="font-semibold">Olá, {userName.split(' ')[0]}!</p>
@@ -50,7 +50,7 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
           </div>
 
           <div>
-            <p className="text-sm text-slate-600 text-center">
+            <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
               Clique no link de verificação enviado para o seu e-mail.
             </p>
             <div className="mt-4 flex flex-col gap-2">
@@ -64,7 +64,7 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
               <button
                 type="button"
                 onClick={onResend}
-                className="w-full text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                className="w-full text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
               >
                 Reenviar e-mail de confirmação
               </button>
@@ -75,8 +75,8 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
             <div
               className={`flex items-center gap-2 text-sm p-3 rounded-lg border ${
                 notice.type === 'success'
-                  ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
-                  : 'text-amber-700 bg-amber-50 border-amber-100'
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800'
+                  : 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800'
               }`}
               role="status"
             >
@@ -86,7 +86,7 @@ export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100" role="alert">
+            <div className="flex items-center gap-2 text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800" role="alert">
               <AlertCircle size={16} aria-hidden />
               <span>{error}</span>
             </div>

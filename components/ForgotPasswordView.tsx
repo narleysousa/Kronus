@@ -62,34 +62,34 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
             aria-label="Voltar"
           >
             <ArrowLeft size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <KronusLogo className="w-8 h-8 text-indigo-600" aria-hidden />
-            <h2 className="text-lg font-bold text-slate-800">Esqueci minha senha</h2>
+            <KronusLogo className="w-8 h-8 text-indigo-600 dark:text-indigo-400" aria-hidden />
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Esqueci minha senha</h2>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <p className="text-slate-600 text-sm">
+          <p className="text-slate-600 dark:text-slate-400 text-sm">
             Informe o CPF ou o e-mail cadastrado para receber um link de redefinição de PIN.
           </p>
           <div>
-            <label htmlFor="forgot-cpf-email" className="block text-sm font-semibold text-slate-700 mb-2">CPF ou E-mail</label>
+            <label htmlFor="forgot-cpf-email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">CPF ou E-mail</label>
             <input
               id="forgot-cpf-email"
               type="text"
               placeholder="000.000.000-00 ou email@exemplo.com"
-              className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none"
               value={displayCpfOrEmail}
               onChange={handleCpfOrEmailChange}
               aria-describedby={error ? 'forgot-error' : undefined}
@@ -97,14 +97,14 @@ export const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({
           </div>
 
           {status === 'sent' && targetEmail && (
-            <div className="flex items-start gap-2 text-emerald-600 text-sm bg-emerald-50 p-3 rounded-lg border border-emerald-100" role="status">
+            <div className="flex items-start gap-2 text-emerald-600 dark:text-emerald-400 text-sm bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800" role="status">
               <MailCheck size={16} aria-hidden />
               <span>Enviamos um link de redefinição para <strong>{maskEmail(targetEmail)}</strong>. Verifique sua caixa de entrada.</span>
             </div>
           )}
 
           {error && (
-            <div id="forgot-error" className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100" role="alert">
+            <div id="forgot-error" className="flex items-center gap-2 text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800" role="alert">
               <AlertCircle size={16} aria-hidden />
               <span>{error}</span>
             </div>
