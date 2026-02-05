@@ -52,7 +52,8 @@ const toLocalTimeInput = (timestamp: number) => {
   const date = new Date(timestamp);
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 };
 
 const buildEndTime = (date: string, time: string) => {
@@ -652,6 +653,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-xs text-slate-500 dark:text-slate-400">Hora</label>
                         <input
                           type="time"
+                          step="1"
                           value={newLogDraft.time}
                           onChange={(e) => updateNewLogDraft(user.id, { time: e.target.value })}
                           className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
@@ -662,6 +664,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <label className="text-xs text-slate-500 dark:text-slate-400">Até</label>
                           <input
                             type="time"
+                            step="1"
                             value={newLogDraft.endTime || ''}
                             onChange={(e) => updateNewLogDraft(user.id, { endTime: e.target.value })}
                             className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
@@ -698,9 +701,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       const draftLog = isEditingLog ? (logDrafts[log.id] || createLogDraft(log)) : createLogDraft(log);
                       const canSaveLog = !!draftLog.date && !!draftLog.time && (draftLog.type !== 'JUSTIFIED' || !!draftLog.endTime);
                       const typeInfo = getLogTypeInfo(log);
+                      const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
                       const logTimeLabel = log.type === 'JUSTIFIED' && log.endTimestamp
-                        ? `${new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${new Date(log.endTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                        : new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        ? `${new Date(log.timestamp).toLocaleTimeString('pt-BR', timeOptions)} - ${new Date(log.endTimestamp).toLocaleTimeString('pt-BR', timeOptions)}`
+                        : new Date(log.timestamp).toLocaleTimeString('pt-BR', timeOptions);
 
                       return (
                         <div key={log.id} className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 text-sm">
@@ -714,6 +718,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               />
                               <input
                                 type="time"
+                                step="1"
                                 value={draftLog.time}
                                 onChange={(e) => updateLogDraft(log.id, { time: e.target.value })}
                                 className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
@@ -721,6 +726,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               {draftLog.type === 'JUSTIFIED' && (
                                 <input
                                   type="time"
+                                  step="1"
                                   value={draftLog.endTime || ''}
                                   onChange={(e) => updateLogDraft(log.id, { endTime: e.target.value })}
                                   className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
