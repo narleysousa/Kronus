@@ -16,6 +16,7 @@ interface HistoryViewProps {
   onConfirmDelete: (id: string, log: PunchLog) => void;
   onUpdateLog: (id: string, updates: Partial<PunchLog>) => void;
   onUpdateVacationRange?: (id: string, updates: Partial<VacationRange>) => void;
+  onDeleteVacationRange?: (id: string) => void;
   onUpdateHolidayRange?: (id: string, updates: Partial<HolidayRange>) => void;
 }
 
@@ -150,6 +151,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   onConfirmDelete,
   onUpdateLog,
   onUpdateVacationRange,
+  onDeleteVacationRange,
   onUpdateHolidayRange,
 }) => {
   const durationMap = useMemo(() => {
@@ -415,6 +417,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
                 const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
                 const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
+                const canDeleteVacationRange = rangeKind === 'vacation' && !!onDeleteVacationRange;
 
                 return (
                   <tr key={item.key} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
@@ -445,6 +448,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                             aria-label={`Editar período ${typeInfo.label.toLowerCase()}`}
                           >
                             <Edit2 size={18} />
+                          </button>
+                        )}
+                        {canDeleteVacationRange && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Deseja realmente excluir este registro de férias?')) {
+                                onDeleteVacationRange?.(range.id);
+                              }
+                            }}
+                            className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
+                            aria-label="Excluir registro de férias"
+                          >
+                            <Trash2 size={18} />
                           </button>
                         )}
                       </div>
@@ -516,6 +533,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
             const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
             const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
+            const canDeleteVacationRange = rangeKind === 'vacation' && !!onDeleteVacationRange;
 
             return (
               <div key={item.key} className="p-4 flex items-center justify-between gap-4">
@@ -546,6 +564,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       aria-label="Editar período abonado"
                     >
                       <Edit2 size={18} />
+                    </button>
+                  )}
+                  {canDeleteVacationRange && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Deseja realmente excluir este registro de férias?')) {
+                          onDeleteVacationRange?.(range.id);
+                        }
+                      }}
+                      className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg"
+                      aria-label="Excluir registro de férias"
+                    >
+                      <Trash2 size={18} />
                     </button>
                   )}
                 </div>
