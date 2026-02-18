@@ -1370,6 +1370,42 @@ export default function App() {
     void upsertLogDoc(next);
   };
 
+  const updateVacationRange = (rangeId: string, updates: Partial<VacationRange>) => {
+    if (!currentUser) return;
+    const currentRanges = vacationsRef.current[currentUser.id] ?? [];
+    const existing = currentRanges.find(range => range.id === rangeId);
+    if (!existing) return;
+    const next: VacationRange = { ...existing, ...updates, updatedAt: Date.now() };
+    const start = new Date(`${next.startDate}T00:00:00`).getTime();
+    const end = new Date(`${next.endDate}T00:00:00`).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) return;
+    setVacations(prev => ({
+      ...prev,
+      [currentUser.id]: (prev[currentUser.id] ?? []).map(range => (
+        range.id === rangeId ? next : range
+      )),
+    }));
+    void upsertVacationDoc(next);
+  };
+
+  const updateHolidayRange = (rangeId: string, updates: Partial<HolidayRange>) => {
+    if (!currentUser) return;
+    const currentRanges = holidaysRef.current[currentUser.id] ?? [];
+    const existing = currentRanges.find(range => range.id === rangeId);
+    if (!existing) return;
+    const next: HolidayRange = { ...existing, ...updates, updatedAt: Date.now() };
+    const start = new Date(`${next.startDate}T00:00:00`).getTime();
+    const end = new Date(`${next.endDate}T00:00:00`).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) return;
+    setHolidays(prev => ({
+      ...prev,
+      [currentUser.id]: (prev[currentUser.id] ?? []).map(range => (
+        range.id === rangeId ? next : range
+      )),
+    }));
+    void upsertHolidayDoc(next);
+  };
+
   const addLog = (log: PunchLog) => {
     const now = Date.now();
     if (!canManageLogsForUser(currentUser, log.userId)) return;
@@ -1563,6 +1599,8 @@ export default function App() {
         {view === 'history' && (
           <HistoryView
             userLogs={userLogs}
+            userVacations={userVacations}
+            userHolidays={userHolidays}
             userName={currentUser?.name}
             canDelete={log => canManageLogsForUser(currentUser, log.userId)}
             canEdit={log => canManageLogsForUser(currentUser, log.userId)}
@@ -1572,6 +1610,8 @@ export default function App() {
               setConfirmDelete({ id, log });
             }}
             onUpdateLog={updateLog}
+            onUpdateVacationRange={updateVacationRange}
+            onUpdateHolidayRange={updateHolidayRange}
           />
         )}
 

@@ -1,18 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { History, Trash2, FileSpreadsheet, Edit2, Save, X } from 'lucide-react';
-import { PunchLog, PunchType } from '../types';
+import { PunchLog, PunchType, VacationRange, HolidayRange } from '../types';
 import { isWeekend } from '../utils/weekend';
 import { formatDurationMs } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
 
 interface HistoryViewProps {
   userLogs: PunchLog[];
+  userVacations?: VacationRange[];
+  userHolidays?: HolidayRange[];
   /** Nome do usuário (para nome do arquivo na exportação). */
   userName?: string;
   canDelete?: (log: PunchLog) => boolean;
   canEdit?: (log: PunchLog) => boolean;
   onConfirmDelete: (id: string, log: PunchLog) => void;
   onUpdateLog: (id: string, updates: Partial<PunchLog>) => void;
+  onUpdateVacationRange?: (id: string, updates: Partial<VacationRange>) => void;
+  onUpdateHolidayRange?: (id: string, updates: Partial<HolidayRange>) => void;
 }
 
 interface LogDraft {
@@ -21,6 +25,23 @@ interface LogDraft {
   endTime?: string;
   type: PunchType;
 }
+
+type AbonedKind = 'vacation' | 'holiday';
+
+type HistoryItem =
+  | {
+      kind: 'log';
+      key: string;
+      timestamp: number;
+      log: PunchLog;
+    }
+  | {
+      kind: 'range';
+      key: string;
+      timestamp: number;
+      rangeKind: AbonedKind;
+      range: VacationRange | HolidayRange;
+    };
 
 const getLogTypeInfo = (log: PunchLog) => {
   if (log.type === 'IN') {
@@ -44,6 +65,29 @@ const getLogTypeInfo = (log: PunchLog) => {
     dotClass: 'bg-amber-500',
   };
 };
+
+const getRangeTypeInfo = (kind: AbonedKind) => {
+  if (kind === 'vacation') {
+    return {
+      label: 'Férias (abonado)',
+      badgeClass: 'bg-emerald-100 text-emerald-700',
+      dotClass: 'bg-emerald-500',
+    };
+  }
+  return {
+    label: 'Feriado/Recesso (abonado)',
+    badgeClass: 'bg-amber-100 text-amber-700',
+    dotClass: 'bg-amber-500',
+  };
+};
+
+const dateStringToTimestamp = (dateString: string) => new Date(`${dateString}T00:00:00`).getTime();
+
+const formatDateString = (dateString: string) =>
+  new Date(`${dateString}T00:00:00`).toLocaleDateString('pt-BR');
+
+const formatWeekdayFromDateString = (dateString: string) =>
+  new Date(`${dateString}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short' });
 
 const formatLogTime = (log: PunchLog, includeSeconds = true) => {
   const timeOptions: Intl.DateTimeFormatOptions = includeSeconds
@@ -89,13 +133,24 @@ const createLogDraft = (log: PunchLog): LogDraft => ({
 const formatWeekday = (timestamp: number) =>
   new Date(timestamp).toLocaleDateString('pt-BR', { weekday: 'short' });
 
+const getRangeDaysCount = (startDate: string, endDate: string) => {
+  const start = dateStringToTimestamp(startDate);
+  const end = dateStringToTimestamp(endDate);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return 1;
+  return Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
+};
+
 export const HistoryView: React.FC<HistoryViewProps> = ({
   userLogs,
+  userVacations = [],
+  userHolidays = [],
   userName,
   canDelete,
   canEdit,
   onConfirmDelete,
   onUpdateLog,
+  onUpdateVacationRange,
+  onUpdateHolidayRange,
 }) => {
   const durationMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -122,9 +177,43 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     return map;
   }, [userLogs]);
 
+  const historyItems = useMemo<HistoryItem[]>(() => {
+    const logItems: HistoryItem[] = userLogs.map(log => ({
+      kind: 'log',
+      key: `log-${log.id}`,
+      timestamp: log.timestamp,
+      log,
+    }));
+
+    const vacationItems: HistoryItem[] = userVacations.map(range => ({
+      kind: 'range',
+      key: `vac-${range.id}`,
+      timestamp: dateStringToTimestamp(range.startDate),
+      rangeKind: 'vacation',
+      range,
+    }));
+
+    const holidayItems: HistoryItem[] = userHolidays.map(range => ({
+      kind: 'range',
+      key: `hol-${range.id}`,
+      timestamp: dateStringToTimestamp(range.startDate),
+      rangeKind: 'holiday',
+      range,
+    }));
+
+    return [...logItems, ...vacationItems, ...holidayItems].sort((a, b) => b.timestamp - a.timestamp);
+  }, [userLogs, userVacations, userHolidays]);
+
   const [editingLog, setEditingLog] = useState<PunchLog | null>(null);
   const [logDraft, setLogDraft] = useState<LogDraft | null>(null);
   const [editError, setEditError] = useState('');
+
+  const [editingRange, setEditingRange] = useState<{
+    kind: AbonedKind;
+    range: VacationRange | HolidayRange;
+  } | null>(null);
+  const [rangeDraft, setRangeDraft] = useState<{ startDate: string; endDate: string } | null>(null);
+  const [rangeEditError, setRangeEditError] = useState('');
 
   const handleExport = () => {
     exportHoursToSpreadsheet(userLogs, { userName, filename: userName ? undefined : 'meus-registros' });
@@ -140,6 +229,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     setEditingLog(null);
     setLogDraft(null);
     setEditError('');
+  };
+
+  const openRangeEdit = (kind: AbonedKind, range: VacationRange | HolidayRange) => {
+    setEditingRange({ kind, range });
+    setRangeDraft({ startDate: range.startDate, endDate: range.endDate });
+    setRangeEditError('');
+  };
+
+  const closeRangeEdit = () => {
+    setEditingRange(null);
+    setRangeDraft(null);
+    setRangeEditError('');
   };
 
   const updateDraft = (updates: Partial<LogDraft>) => {
@@ -196,12 +297,38 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     closeEdit();
   };
 
+  const saveRangeEdit = () => {
+    if (!editingRange || !rangeDraft) return;
+    const { startDate, endDate } = rangeDraft;
+    if (!startDate || !endDate) {
+      setRangeEditError('Informe o período completo.');
+      return;
+    }
+    const start = dateStringToTimestamp(startDate);
+    const end = dateStringToTimestamp(endDate);
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      setRangeEditError('Datas inválidas.');
+      return;
+    }
+    if (end < start) {
+      setRangeEditError('A data final deve ser depois da inicial.');
+      return;
+    }
+
+    if (editingRange.kind === 'vacation') {
+      onUpdateVacationRange?.(editingRange.range.id, { startDate, endDate, updatedAt: Date.now() });
+    } else {
+      onUpdateHolidayRange?.(editingRange.range.id, { startDate, endDate, updatedAt: Date.now() });
+    }
+    closeRangeEdit();
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Histórico Detalhado</h2>
-          <p className="text-slate-500 dark:text-slate-400">Acompanhe entradas, saídas e liberações registradas no sistema.</p>
+          <p className="text-slate-500 dark:text-slate-400">Acompanhe entradas, saídas, liberações e dias abonados.</p>
         </div>
         <button
           type="button"
@@ -228,17 +355,76 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-              {userLogs.map(log => {
-                const typeInfo = getLogTypeInfo(log);
-                const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
-                const isWeekendDay = isWeekend(dateString);
+              {historyItems.map(item => {
+                if (item.kind === 'log') {
+                  const log = item.log;
+                  const typeInfo = getLogTypeInfo(log);
+                  const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
+                  const isWeekendDay = isWeekend(dateString);
+                  return (
+                    <tr key={item.key} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-slate-100">
+                        {new Date(log.timestamp).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className={`px-6 py-4 text-sm font-semibold ${isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                        {formatWeekday(log.timestamp)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${typeInfo.badgeClass}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full block ${typeInfo.dotClass}`} aria-hidden />
+                          {typeInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
+                        <span>{formatLogTime(log)}</span>
+                        {durationMap[log.id] !== undefined && (
+                          <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {canEdit?.(log) !== false && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(log)}
+                              className="p-2 text-slate-300 dark:text-slate-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors rounded-lg"
+                              aria-label={`Editar registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                          )}
+                          {canDelete?.(log) !== false && (
+                            <button
+                              type="button"
+                              onClick={() => onConfirmDelete(log.id, log)}
+                              className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
+                              aria-label={`Excluir registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const { rangeKind, range } = item;
+                const typeInfo = getRangeTypeInfo(rangeKind);
+                const isSingleDay = range.startDate === range.endDate;
+                const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
+                const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
+                const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
+
                 return (
-                  <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                  <tr key={item.key} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-slate-100">
-                      {new Date(log.timestamp).toLocaleDateString('pt-BR')}
+                      {isSingleDay
+                        ? formatDateString(range.startDate)
+                        : `${formatDateString(range.startDate)} → ${formatDateString(range.endDate)}`}
                     </td>
                     <td className={`px-6 py-4 text-sm font-semibold ${isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                      {formatWeekday(log.timestamp)}
+                      {isSingleDay ? formatWeekdayFromDateString(range.startDate) : 'Período'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${typeInfo.badgeClass}`}>
@@ -247,31 +433,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
-                      <span>{formatLogTime(log)}</span>
-                      {durationMap[log.id] !== undefined && (
-                        <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
-                      )}
+                      {rangeDays === 1 ? 'Dia abonado' : `${rangeDays} dias abonados`}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {canEdit?.(log) !== false && (
+                        {canEditRange && (
                           <button
                             type="button"
-                            onClick={() => openEdit(log)}
+                            onClick={() => openRangeEdit(rangeKind, range)}
                             className="p-2 text-slate-300 dark:text-slate-500 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors rounded-lg"
-                            aria-label={`Editar registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
+                            aria-label={`Editar período ${typeInfo.label.toLowerCase()}`}
                           >
                             <Edit2 size={18} />
-                          </button>
-                        )}
-                        {canDelete?.(log) !== false && (
-                          <button
-                            type="button"
-                            onClick={() => onConfirmDelete(log.id, log)}
-                            className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
-                            aria-label={`Excluir registro de ${typeInfo.label.toLowerCase()} em ${new Date(log.timestamp).toLocaleString('pt-BR')}`}
-                          >
-                            <Trash2 size={18} />
                           </button>
                         )}
                       </div>
@@ -285,49 +458,94 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
         {/* Mobile: cards */}
         <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
-          {userLogs.map(log => {
-            const typeInfo = getLogTypeInfo(log);
-            const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
-            const isWeekendDay = isWeekend(dateString);
-            const weekdayLabel = formatWeekday(log.timestamp);
+          {historyItems.map(item => {
+            if (item.kind === 'log') {
+              const log = item.log;
+              const typeInfo = getLogTypeInfo(log);
+              const dateString = log.dateString ?? toLocalDateInput(log.timestamp);
+              const isWeekendDay = isWeekend(dateString);
+              const weekdayLabel = formatWeekday(log.timestamp);
+              return (
+                <div key={item.key} className="p-4 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      <span>{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
+                      <span className="mx-1">·</span>
+                      <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
+                        {weekdayLabel}
+                      </span>
+                      <span className="mx-1">·</span>
+                      <span>{formatLogTime(log, false)}</span>
+                      {durationMap[log.id] !== undefined && (
+                        <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                      )}
+                    </p>
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
+                      {typeInfo.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canEdit?.(log) !== false && (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(log)}
+                        className="p-2 text-slate-300 dark:text-slate-500 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg"
+                        aria-label="Editar registro"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                    )}
+                    {canDelete?.(log) !== false && (
+                      <button
+                        type="button"
+                        onClick={() => onConfirmDelete(log.id, log)}
+                        className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg"
+                        aria-label="Excluir registro"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            const { rangeKind, range } = item;
+            const typeInfo = getRangeTypeInfo(rangeKind);
+            const isSingleDay = range.startDate === range.endDate;
+            const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
+            const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
+            const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
+
             return (
-              <div key={log.id} className="p-4 flex items-center justify-between gap-4">
+              <div key={item.key} className="p-4 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    <span>{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
-                    <span className="mx-1">·</span>
-                    <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
-                      {weekdayLabel}
+                    <span>
+                      {isSingleDay
+                        ? formatDateString(range.startDate)
+                        : `${formatDateString(range.startDate)} → ${formatDateString(range.endDate)}`}
                     </span>
                     <span className="mx-1">·</span>
-                    <span>{formatLogTime(log, false)}</span>
-                    {durationMap[log.id] !== undefined && (
-                      <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
-                    )}
+                    <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
+                      {isSingleDay ? formatWeekdayFromDateString(range.startDate) : 'Período'}
+                    </span>
+                    <span className="mx-1">·</span>
+                    <span>{rangeDays === 1 ? 'Dia abonado' : `${rangeDays} dias abonados`}</span>
                   </p>
                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
                     {typeInfo.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {canEdit?.(log) !== false && (
+                  {canEditRange && (
                     <button
                       type="button"
-                      onClick={() => openEdit(log)}
+                      onClick={() => openRangeEdit(rangeKind, range)}
                       className="p-2 text-slate-300 dark:text-slate-500 hover:text-indigo-500 dark:hover:text-indigo-400 rounded-lg"
-                      aria-label="Editar registro"
+                      aria-label="Editar período abonado"
                     >
                       <Edit2 size={18} />
-                    </button>
-                  )}
-                  {canDelete?.(log) !== false && (
-                    <button
-                      type="button"
-                      onClick={() => onConfirmDelete(log.id, log)}
-                      className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg"
-                      aria-label="Excluir registro"
-                    >
-                      <Trash2 size={18} />
                     </button>
                   )}
                 </div>
@@ -336,12 +554,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           })}
         </div>
 
-        {userLogs.length === 0 && (
+        {historyItems.length === 0 && (
           <div className="py-20 text-center">
             <div className="inline-flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-700 rounded-full text-slate-300 dark:text-slate-500 mb-4">
               <History size={48} aria-hidden />
             </div>
-            <p className="text-slate-400 dark:text-slate-500 font-medium">Você ainda não possui batidas registradas.</p>
+            <p className="text-slate-400 dark:text-slate-500 font-medium">Você ainda não possui registros ou dias abonados.</p>
           </div>
         )}
       </div>
@@ -430,6 +648,72 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 >
                   <Save size={18} aria-hidden />
                   Salvar alterações
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingRange && rangeDraft && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="edit-range-title">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                <Edit2 size={24} aria-hidden />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 id="edit-range-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">Editar período abonado</h3>
+                <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
+                  Ajuste as datas de início e fim para atualizar o período.
+                </p>
+              </div>
+              <button type="button" onClick={closeRangeEdit} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors shrink-0" aria-label="Fechar">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Data inicial</label>
+                  <input
+                    type="date"
+                    value={rangeDraft.startDate}
+                    onChange={(e) => setRangeDraft(prev => (prev ? { ...prev, startDate: e.target.value } : prev))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Data final</label>
+                  <input
+                    type="date"
+                    value={rangeDraft.endDate}
+                    onChange={(e) => setRangeDraft(prev => (prev ? { ...prev, endDate: e.target.value } : prev))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              {rangeEditError && (
+                <p className="text-sm text-rose-600 dark:text-rose-400 font-medium" role="alert">{rangeEditError}</p>
+              )}
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={closeRangeEdit}
+                  className="px-4 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={saveRangeEdit}
+                  className="px-4 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors flex items-center gap-2"
+                >
+                  <Save size={18} aria-hidden />
+                  Salvar período
                 </button>
               </div>
             </div>
