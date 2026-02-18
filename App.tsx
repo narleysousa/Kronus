@@ -1400,6 +1400,18 @@ export default function App() {
     void deleteKronusDocs({ vacations: [rangeId] });
   };
 
+  const deleteHolidayRange = (rangeId: string) => {
+    if (!currentUser) return;
+    const currentRanges = holidaysRef.current[currentUser.id] ?? [];
+    const exists = currentRanges.some(range => range.id === rangeId);
+    if (!exists) return;
+    setHolidays(prev => ({
+      ...prev,
+      [currentUser.id]: (prev[currentUser.id] ?? []).filter(range => range.id !== rangeId),
+    }));
+    void deleteKronusDocs({ holidays: [rangeId] });
+  };
+
   const updateHolidayRange = (rangeId: string, updates: Partial<HolidayRange>) => {
     if (!currentUser) return;
     const currentRanges = holidaysRef.current[currentUser.id] ?? [];
@@ -1625,6 +1637,7 @@ export default function App() {
             onUpdateVacationRange={updateVacationRange}
             onDeleteVacationRange={deleteVacationRange}
             onUpdateHolidayRange={updateHolidayRange}
+            onDeleteHolidayRange={deleteHolidayRange}
           />
         )}
 

@@ -18,6 +18,7 @@ interface HistoryViewProps {
   onUpdateVacationRange?: (id: string, updates: Partial<VacationRange>) => void;
   onDeleteVacationRange?: (id: string) => void;
   onUpdateHolidayRange?: (id: string, updates: Partial<HolidayRange>) => void;
+  onDeleteHolidayRange?: (id: string) => void;
 }
 
 interface LogDraft {
@@ -153,6 +154,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   onUpdateVacationRange,
   onDeleteVacationRange,
   onUpdateHolidayRange,
+  onDeleteHolidayRange,
 }) => {
   const durationMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -417,7 +419,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
                 const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
                 const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
-                const canDeleteVacationRange = rangeKind === 'vacation' && !!onDeleteVacationRange;
+                const canDeleteRange = rangeKind === 'vacation' ? !!onDeleteVacationRange : !!onDeleteHolidayRange;
 
                 return (
                   <tr key={item.key} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
@@ -450,16 +452,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                             <Edit2 size={18} />
                           </button>
                         )}
-                        {canDeleteVacationRange && (
+                        {canDeleteRange && (
                           <button
                             type="button"
                             onClick={() => {
-                              if (window.confirm('Deseja realmente excluir este registro de férias?')) {
-                                onDeleteVacationRange?.(range.id);
+                              const label = rangeKind === 'vacation' ? 'férias' : 'feriado/recesso';
+                              if (window.confirm(`Deseja realmente excluir este registro de ${label}?`)) {
+                                if (rangeKind === 'vacation') {
+                                  onDeleteVacationRange?.(range.id);
+                                } else {
+                                  onDeleteHolidayRange?.(range.id);
+                                }
                               }
                             }}
                             className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg"
-                            aria-label="Excluir registro de férias"
+                            aria-label="Excluir período abonado"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -533,7 +540,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             const isWeekendDay = isSingleDay ? isWeekend(range.startDate) : false;
             const rangeDays = getRangeDaysCount(range.startDate, range.endDate);
             const canEditRange = rangeKind === 'vacation' ? !!onUpdateVacationRange : !!onUpdateHolidayRange;
-            const canDeleteVacationRange = rangeKind === 'vacation' && !!onDeleteVacationRange;
+            const canDeleteRange = rangeKind === 'vacation' ? !!onDeleteVacationRange : !!onDeleteHolidayRange;
 
             return (
               <div key={item.key} className="p-4 flex items-center justify-between gap-4">
@@ -566,16 +573,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       <Edit2 size={18} />
                     </button>
                   )}
-                  {canDeleteVacationRange && (
+                  {canDeleteRange && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm('Deseja realmente excluir este registro de férias?')) {
-                          onDeleteVacationRange?.(range.id);
+                        const label = rangeKind === 'vacation' ? 'férias' : 'feriado/recesso';
+                        if (window.confirm(`Deseja realmente excluir este registro de ${label}?`)) {
+                          if (rangeKind === 'vacation') {
+                            onDeleteVacationRange?.(range.id);
+                          } else {
+                            onDeleteHolidayRange?.(range.id);
+                          }
                         }
                       }}
                       className="p-2 text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg"
-                      aria-label="Excluir registro de férias"
+                      aria-label="Excluir período abonado"
                     >
                       <Trash2 size={18} />
                     </button>
