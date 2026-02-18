@@ -184,6 +184,7 @@ export default function App() {
   const [personalDate, setPersonalDate] = useState(() => toLocalDateInput(Date.now()));
   const [personalStartTime, setPersonalStartTime] = useState(() => toLocalTimeInput(Date.now()));
   const [personalEndTime, setPersonalEndTime] = useState(() => toLocalTimeInput(Date.now() + 60 * 60 * 1000));
+  const [personalReason, setPersonalReason] = useState('');
   const [personalError, setPersonalError] = useState('');
   const [vacationModalOpen, setVacationModalOpen] = useState(false);
   const [vacationStartDate, setVacationStartDate] = useState(() => toLocalDateInput(Date.now()));
@@ -1042,6 +1043,7 @@ export default function App() {
     setPersonalDate(toLocalDateInput(now));
     setPersonalStartTime(toLocalTimeInput(now));
     setPersonalEndTime(toLocalTimeInput(now + 60 * 60 * 1000));
+    setPersonalReason('');
     setPersonalError('');
     setPersonalModalOpen(true);
   };
@@ -1062,6 +1064,11 @@ export default function App() {
       setPersonalError('Preencha a data e os horários.');
       return;
     }
+    const reason = personalReason.trim();
+    if (!reason) {
+      setPersonalError('Informe a justificativa do compromisso.');
+      return;
+    }
     const startTimestamp = toTimestamp(personalDate, personalStartTime);
     const endTimestamp = toTimestamp(personalDate, personalEndTime);
     if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) {
@@ -1079,6 +1086,7 @@ export default function App() {
       timestamp: startTimestamp,
       endTimestamp,
       type: 'JUSTIFIED',
+      justification: reason,
       justificationKind: 'personal',
       dateString: personalDate,
       updatedAt: Date.now(),
@@ -1707,13 +1715,15 @@ export default function App() {
         date={personalDate}
         startTime={personalStartTime}
         endTime={personalEndTime}
+        reason={personalReason}
         totalHoursLabel={personalHours !== null ? `${personalHours.toFixed(2)}h` : '--'}
         error={personalError}
         onDateChange={setPersonalDate}
         onStartTimeChange={setPersonalStartTime}
         onEndTimeChange={setPersonalEndTime}
+        onReasonChange={setPersonalReason}
         onConfirm={handlePersonalCommitmentSave}
-        onCancel={() => { setPersonalModalOpen(false); setPersonalError(''); }}
+        onCancel={() => { setPersonalModalOpen(false); setPersonalReason(''); setPersonalError(''); }}
       />
 
       <VacationModal

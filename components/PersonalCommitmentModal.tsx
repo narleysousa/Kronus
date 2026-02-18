@@ -6,11 +6,13 @@ interface PersonalCommitmentModalProps {
   date: string;
   startTime: string;
   endTime: string;
+  reason: string;
   totalHoursLabel: string;
   error: string;
   onDateChange: (value: string) => void;
   onStartTimeChange: (value: string) => void;
   onEndTimeChange: (value: string) => void;
+  onReasonChange: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,11 +22,13 @@ export const PersonalCommitmentModal: React.FC<PersonalCommitmentModalProps> = (
   date,
   startTime,
   endTime,
+  reason,
   totalHoursLabel,
   error,
   onDateChange,
   onStartTimeChange,
   onEndTimeChange,
+  onReasonChange,
   onConfirm,
   onCancel,
 }) => {
@@ -82,6 +86,17 @@ export const PersonalCommitmentModal: React.FC<PersonalCommitmentModalProps> = (
           <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl px-4 py-3 text-sm">
             <span className="text-amber-700 dark:text-amber-400 font-semibold">Horas consideradas</span>
             <span className="text-amber-700 dark:text-amber-400 font-bold">{totalHoursLabel}</span>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Justificativa</label>
+            <textarea
+              value={reason}
+              onChange={(e) => onReasonChange(e.target.value)}
+              rows={3}
+              placeholder="Ex.: Consulta médica, compromisso escolar, etc."
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 resize-none"
+            />
           </div>
 
           {error && (

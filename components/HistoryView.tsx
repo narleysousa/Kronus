@@ -25,6 +25,7 @@ interface LogDraft {
   date: string;
   time: string;
   endTime?: string;
+  justification: string;
   type: PunchType;
 }
 
@@ -129,6 +130,7 @@ const createLogDraft = (log: PunchLog): LogDraft => ({
   endTime: log.type === 'JUSTIFIED'
     ? toLocalTimeInput(log.endTimestamp ?? (log.timestamp + 60 * 60 * 1000))
     : '',
+  justification: log.justification ?? '',
   type: log.type,
 });
 
@@ -256,6 +258,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       }
       if (updates.type && updates.type !== 'JUSTIFIED') {
         next.endTime = '';
+        next.justification = '';
       }
       return next;
     });
@@ -278,6 +281,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         setEditError('Informe o horário final.');
         return;
       }
+      const justification = logDraft.justification.trim();
+      if (!justification) {
+        setEditError('Informe a justificativa.');
+        return;
+      }
       const endTimestamp = new Date(`${logDraft.date}T${logDraft.endTime}`).getTime();
       if (Number.isNaN(endTimestamp) || endTimestamp <= timestamp) {
         setEditError('O horário final deve ser maior que o inicial.');
@@ -288,6 +296,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         endTimestamp,
         type: logDraft.type,
         dateString: logDraft.date,
+        justification,
         justificationKind: editingLog.justificationKind ?? 'personal',
       });
     } else {
@@ -296,6 +305,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         endTimestamp: undefined,
         type: logDraft.type,
         dateString: logDraft.date,
+        justification: undefined,
+        justificationKind: undefined,
       });
     }
     closeEdit();
@@ -661,15 +672,27 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </div>
 
               {logDraft.type === 'JUSTIFIED' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Horário final</label>
-                <input
-                  type="time"
-                  step="1"
-                  value={logDraft.endTime ?? ''}
-                  onChange={(e) => updateDraft({ endTime: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Horário final</label>
+                    <input
+                      type="time"
+                      step="1"
+                      value={logDraft.endTime ?? ''}
+                      onChange={(e) => updateDraft({ endTime: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Justificativa</label>
+                    <textarea
+                      value={logDraft.justification}
+                      onChange={(e) => updateDraft({ justification: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 resize-none"
+                      placeholder="Descreva o motivo da liberação"
+                    />
+                  </div>
                 </div>
               )}
 
