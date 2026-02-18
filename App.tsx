@@ -1721,9 +1721,14 @@ export default function App() {
         startDate={vacationStartDate}
         endDate={vacationEndDate}
         error={vacationError}
+        ranges={userVacations}
         onStartDateChange={setVacationStartDate}
         onEndDateChange={setVacationEndDate}
         onConfirm={handleVacationSave}
+        onUpdateRange={(rangeId, startDate, endDate) => {
+          updateVacationRange(rangeId, { startDate, endDate });
+        }}
+        onDeleteRange={deleteVacationRange}
         onCancel={() => { setVacationModalOpen(false); setVacationError(''); }}
       />
 
