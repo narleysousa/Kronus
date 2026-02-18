@@ -356,6 +356,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const isUserAdmin = user.role === UserRole.ADMIN || user.isMaster;
           const isMasterUser = !!user.isMaster;
           const userLogs = logs.filter(l => l.userId === user.id).sort((a, b) => b.timestamp - a.timestamp);
+          const userVacations = vacations[user.id] ?? [];
+          const userHolidays = holidays[user.id] ?? [];
+          const hasExportData = userLogs.length > 0 || userVacations.length > 0 || userHolidays.length > 0;
           const isEditingUser = editingUserId === user.id;
           const draft = isEditingUser ? (userDrafts[user.id] || createUserDraft(user)) : createUserDraft(user);
           const userPinDigits = draft.pin.replace(/\D/g, '').slice(0, 4);
@@ -431,8 +434,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {canManageLogsOf(currentUser, user) && (
                     <button
                       type="button"
-                      onClick={() => exportHoursToSpreadsheet(userLogs, { userName: user.name, includeUserColumn: true })}
-                      disabled={userLogs.length === 0}
+                      onClick={() => exportHoursToSpreadsheet(userLogs, {
+                        userName: user.name,
+                        includeUserColumn: true,
+                        vacations: userVacations,
+                        holidays: userHolidays,
+                      })}
+                      disabled={!hasExportData}
                       className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold border border-emerald-100 dark:border-emerald-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Exportar registros deste usuário para planilha (CSV)"
                     >
@@ -619,8 +627,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => exportHoursToSpreadsheet(userLogs, { userName: user.name, includeUserColumn: true })}
-                        disabled={userLogs.length === 0}
+                        onClick={() => exportHoursToSpreadsheet(userLogs, {
+                          userName: user.name,
+                          includeUserColumn: true,
+                          vacations: userVacations,
+                          holidays: userHolidays,
+                        })}
+                        disabled={!hasExportData}
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <FileSpreadsheet size={14} aria-hidden />

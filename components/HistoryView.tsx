@@ -222,8 +222,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const [rangeEditError, setRangeEditError] = useState('');
 
   const handleExport = () => {
-    exportHoursToSpreadsheet(userLogs, { userName, filename: userName ? undefined : 'meus-registros' });
+    exportHoursToSpreadsheet(userLogs, {
+      userName,
+      filename: userName ? undefined : 'meus-registros',
+      vacations: userVacations,
+      holidays: userHolidays,
+    });
   };
+  const hasExportData = userLogs.length > 0 || userVacations.length > 0 || userHolidays.length > 0;
 
   const openEdit = (log: PunchLog) => {
     setEditingLog(log);
@@ -348,7 +354,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         <button
           type="button"
           onClick={handleExport}
-          disabled={userLogs.length === 0}
+          disabled={!hasExportData}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           <FileSpreadsheet size={18} aria-hidden />

@@ -1,4 +1,4 @@
-import { PunchLog } from '../types';
+import { PunchLog, VacationRange, HolidayRange } from '../types';
 import { formatDurationMs } from './formatDuration';
 
 const UTF8_BOM = '\uFEFF';
@@ -26,6 +26,21 @@ function formatTime(timestamp: number): string {
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('pt-BR');
+}
+
+function formatDateFromDateString(dateString: string): string {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString('pt-BR');
+}
+
+function dateStringToTimestamp(dateString: string): number {
+  return new Date(`${dateString}T00:00:00`).getTime();
+}
+
+function getRangeDaysCount(startDate: string, endDate: string): number {
+  const start = dateStringToTimestamp(startDate);
+  const end = dateStringToTimestamp(endDate);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return 1;
+  return Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
 }
 
 /**
@@ -59,6 +74,10 @@ export interface ExportOptions {
   userName?: string;
   /** Incluir coluna "Usuário" mesmo com um único usuário (útil para exportação admin). */
   includeUserColumn?: boolean;
+  /** Períodos de férias do usuário para incluir na exportação. */
+  vacations?: VacationRange[];
+  /** Períodos de feriado/recesso do usuário para incluir na exportação. */
+  holidays?: HolidayRange[];
 }
 
 /**
@@ -66,29 +85,60 @@ export interface ExportOptions {
  * Colunas: Data, [Usuário], Tipo, Horário início, Horário fim, Duração
  */
 export function buildHoursCsv(logs: PunchLog[], options: ExportOptions = {}): string {
-  const { userName, includeUserColumn = false } = options;
+  const { userName, includeUserColumn = false, vacations = [], holidays = [] } = options;
   const durationMap = buildDurationMap(logs);
-  const sorted = [...logs].sort((a, b) => a.timestamp - b.timestamp);
-
   const headers = ['Data', ...(userName || includeUserColumn ? ['Usuário'] : []), 'Tipo', 'Horário início', 'Horário fim', 'Duração'];
-  const rows = sorted.map(log => {
-    const typeLabel = getTypeLabel(log);
-    const startTime = formatTime(log.timestamp);
-    const endTime = log.type === 'JUSTIFIED' && log.endTimestamp
-      ? formatTime(log.endTimestamp)
-      : '';
-    const duration = durationMap[log.id] !== undefined ? formatDurationMs(durationMap[log.id]) : '';
-    const userCell = userName ?? '';
-    const cells = [
+  const userCell = userName ?? '';
+
+  const logRows = logs.map(log => ({
+    sortTimestamp: log.timestamp,
+    row: [
       formatDate(log.timestamp),
       ...(userName || includeUserColumn ? [userCell] : []),
-      typeLabel,
-      startTime,
-      endTime,
-      duration,
-    ];
-    return cells.map(escapeCsvCell).join(';');
+      getTypeLabel(log),
+      formatTime(log.timestamp),
+      log.type === 'JUSTIFIED' && log.endTimestamp ? formatTime(log.endTimestamp) : '',
+      durationMap[log.id] !== undefined ? formatDurationMs(durationMap[log.id]) : '',
+    ],
+  }));
+
+  const vacationRows = vacations.map(range => {
+    const startLabel = formatDateFromDateString(range.startDate);
+    const endLabel = formatDateFromDateString(range.endDate);
+    const days = getRangeDaysCount(range.startDate, range.endDate);
+    return {
+      sortTimestamp: dateStringToTimestamp(range.startDate),
+      row: [
+        range.startDate === range.endDate ? startLabel : `${startLabel} → ${endLabel}`,
+        ...(userName || includeUserColumn ? [userCell] : []),
+        'Férias (abonado)',
+        startLabel,
+        endLabel,
+        `${days} ${days === 1 ? 'dia' : 'dias'}`,
+      ],
+    };
   });
+
+  const holidayRows = holidays.map(range => {
+    const startLabel = formatDateFromDateString(range.startDate);
+    const endLabel = formatDateFromDateString(range.endDate);
+    const days = getRangeDaysCount(range.startDate, range.endDate);
+    return {
+      sortTimestamp: dateStringToTimestamp(range.startDate),
+      row: [
+        range.startDate === range.endDate ? startLabel : `${startLabel} → ${endLabel}`,
+        ...(userName || includeUserColumn ? [userCell] : []),
+        'Feriado/Recesso (abonado)',
+        startLabel,
+        endLabel,
+        `${days} ${days === 1 ? 'dia' : 'dias'}`,
+      ],
+    };
+  });
+
+  const rows = [...logRows, ...vacationRows, ...holidayRows]
+    .sort((a, b) => a.sortTimestamp - b.sortTimestamp)
+    .map(item => item.row.map(escapeCsvCell).join(';'));
 
   const sep = ';';
   const headerLine = headers.map(escapeCsvCell).join(sep);
