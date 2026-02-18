@@ -491,10 +491,29 @@ export default function App() {
     }
   };
 
+  const userVacations = useMemo(
+    () => (currentUser ? (vacations[currentUser.id] ?? []) : []),
+    [vacations, currentUser]
+  );
+
+  const userHolidays = useMemo(
+    () => (currentUser ? (holidays[currentUser.id] ?? []) : []),
+    [holidays, currentUser]
+  );
+
   useEffect(() => {
     if (!currentUser) return;
     const pendingDate = currentUser.pendingJustification;
     if (!pendingDate) return;
+    const isAbonedDay = isDateInVacation(pendingDate, userVacations) || isDateInHoliday(pendingDate, userHolidays);
+    if (isAbonedDay) {
+      setUsers(prev => prev.map(u => (
+        u.id === currentUser.id ? { ...u, pendingJustification: '', updatedAt: Date.now() } : u
+      )));
+      setMissedJustificationOpen(false);
+      setMissedJustificationError('');
+      return;
+    }
     const alreadyHandled = userLogs.some(log => log.dateString === pendingDate);
     if (alreadyHandled) {
       setUsers(prev => prev.map(u => (
@@ -506,17 +525,7 @@ export default function App() {
     setMissedJustificationReason('Esqueci');
     setMissedJustificationError('');
     setMissedJustificationOpen(true);
-  }, [currentUser, userLogs]);
-
-  const userVacations = useMemo(
-    () => (currentUser ? (vacations[currentUser.id] ?? []) : []),
-    [vacations, currentUser]
-  );
-
-  const userHolidays = useMemo(
-    () => (currentUser ? (holidays[currentUser.id] ?? []) : []),
-    [holidays, currentUser]
-  );
+  }, [currentUser, userLogs, userVacations, userHolidays]);
 
   const summaries: DaySummary[] = useMemo(() => {
     if (!currentUser) return [];
@@ -1176,8 +1185,10 @@ export default function App() {
       return;
     }
 
-    const startTimestamp = toTimestamp(missedJustificationDate, '12:00');
-    const endTimestamp = toTimestamp(missedJustificationDate, '18:00');
+    const startTimestamp = toTimestamp(missedJustificationDate, '00:00');
+    const normalizedDailyHours = Number.isFinite(currentUser.dailyHours) ? currentUser.dailyHours : 8;
+    const durationMs = Math.max(0.5, Math.min(24, normalizedDailyHours)) * 60 * 60 * 1000;
+    const endTimestamp = startTimestamp + durationMs;
     const newLog: PunchLog = {
       id: crypto.randomUUID(),
       userId: currentUser.id,
