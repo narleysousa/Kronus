@@ -52,6 +52,7 @@ import { VacationModal } from './components/VacationModal';
 import { HolidayModal } from './components/HolidayModal';
 import { ProductivityDashboard } from './components/ProductivityDashboard';
 import { ProfileView } from './components/ProfileView';
+import { Footer } from './components/Footer';
 
 type AppView = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'reset-password' | 'dashboard' | 'admin' | 'history' | 'productivity' | 'profile';
 
@@ -1450,29 +1451,32 @@ export default function App() {
 
   if (view === 'login') {
     return (
-      <>
-        <LoginView
-          loginEmail={loginEmail}
-          setLoginEmail={setLoginEmail}
-          pin={pin}
-          setPin={setPin}
-          rememberLogin={rememberLogin}
-          setRememberLogin={setRememberLogin}
-          authError={authError}
-          onLogin={handleLogin}
-          onGoToRegister={() => {
-            setView('register');
-            setAuthError('');
-            setRegisterError('');
-            setRegisterFormError('');
-            setVerifyEmailUserId(null);
-            setVerifyEmailAddress('');
-            setVerifyEmailError('');
-            setVerifyEmailNotice(null);
-          }}
-          onForgotPassword={() => { setView('forgot-password'); setAuthError(''); }}
-        />
-      </>
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <LoginView
+            loginEmail={loginEmail}
+            setLoginEmail={setLoginEmail}
+            pin={pin}
+            setPin={setPin}
+            rememberLogin={rememberLogin}
+            setRememberLogin={setRememberLogin}
+            authError={authError}
+            onLogin={handleLogin}
+            onGoToRegister={() => {
+              setView('register');
+              setAuthError('');
+              setRegisterError('');
+              setRegisterFormError('');
+              setVerifyEmailUserId(null);
+              setVerifyEmailAddress('');
+              setVerifyEmailError('');
+              setVerifyEmailNotice(null);
+            }}
+            onForgotPassword={() => { setView('forgot-password'); setAuthError(''); }}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
@@ -1483,74 +1487,94 @@ export default function App() {
       ? 'Usuário não encontrado. Volte ao login e tente novamente.'
       : '');
     return (
-      <VerifyEmailView
-        userName={verifyUser?.name ?? 'Usuário'}
-        email={displayEmail}
-        error={fallbackError || undefined}
-        notice={verifyEmailNotice}
-        onVerify={handleVerifyEmail}
-        onResend={handleResendVerification}
-        onBack={() => {
-          signOutFirebase();
-          setView('login');
-          setVerifyEmailUserId(null);
-          setVerifyEmailAddress('');
-          setVerifyEmailError('');
-          setVerifyEmailNotice(null);
-        }}
-      />
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <VerifyEmailView
+            userName={verifyUser?.name ?? 'Usuário'}
+            email={displayEmail}
+            error={fallbackError || undefined}
+            notice={verifyEmailNotice}
+            onVerify={handleVerifyEmail}
+            onResend={handleResendVerification}
+            onBack={() => {
+              signOutFirebase();
+              setView('login');
+              setVerifyEmailUserId(null);
+              setVerifyEmailAddress('');
+              setVerifyEmailError('');
+              setVerifyEmailNotice(null);
+            }}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
   if (view === 'forgot-password') {
     return (
-      <ForgotPasswordView
-        users={safeUsers}
-        onBack={() => setView('login')}
-        onRequestReset={handleRequestPasswordReset}
-      />
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <ForgotPasswordView
+            users={safeUsers}
+            onBack={() => setView('login')}
+            onRequestReset={handleRequestPasswordReset}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
   if (view === 'reset-password') {
     return (
-      <ResetPasswordView
-        email={resetPasswordEmail}
-        isVerifying={resetPasswordChecking}
-        isSubmitting={resetPasswordSubmitting}
-        error={resetPasswordError || undefined}
-        onSubmit={handleResetPassword}
-        onBack={() => {
-          setResetPasswordCode(null);
-          setResetPasswordEmail('');
-          setResetPasswordError('');
-          setResetPasswordChecking(false);
-          setResetPasswordSubmitting(false);
-          setView('login');
-        }}
-      />
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <ResetPasswordView
+            email={resetPasswordEmail}
+            isVerifying={resetPasswordChecking}
+            isSubmitting={resetPasswordSubmitting}
+            error={resetPasswordError || undefined}
+            onSubmit={handleResetPassword}
+            onBack={() => {
+              setResetPasswordCode(null);
+              setResetPasswordEmail('');
+              setResetPasswordError('');
+              setResetPasswordChecking(false);
+              setResetPasswordSubmitting(false);
+              setView('login');
+            }}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
   if (view === 'register') {
     return (
-      <RegisterView
-        onBack={() => {
-          setView('login');
-          setRegisterError('');
-          setRegisterFormError('');
-          setRemoveByCpfMessage(null);
-          setVerifyEmailUserId(null);
-          setVerifyEmailAddress('');
-          setVerifyEmailError('');
-          setVerifyEmailNotice(null);
-        }}
-        onSubmit={handleRegister}
-        cpfError={registerError || undefined}
-        formError={registerFormError || undefined}
-        onRemoveByCpf={handleRemoveByCpf}
-        removeByCpfMessage={removeByCpfMessage}
-      />
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 p-4 overflow-y-auto">
+          <RegisterView
+            onBack={() => {
+              setView('login');
+              setRegisterError('');
+              setRegisterFormError('');
+              setRemoveByCpfMessage(null);
+              setVerifyEmailUserId(null);
+              setVerifyEmailAddress('');
+              setVerifyEmailError('');
+              setVerifyEmailNotice(null);
+            }}
+            onSubmit={handleRegister}
+            cpfError={registerError || undefined}
+            formError={registerFormError || undefined}
+            onRemoveByCpf={handleRemoveByCpf}
+            removeByCpfMessage={removeByCpfMessage}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
@@ -1588,7 +1612,8 @@ export default function App() {
         }}
       />
 
-      <main className="flex-grow px-4 md:px-10 pt-4 md:pt-6 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
+      <div className="flex flex-col flex-1 min-h-0">
+        <main className="flex-grow px-4 md:px-10 pt-4 md:pt-6 pb-24 md:pb-10 overflow-y-auto max-w-7xl mx-auto">
         <div className="lg:hidden mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KronusLogo className="w-8 h-8 text-indigo-600 dark:text-indigo-400" aria-hidden />
@@ -1683,7 +1708,9 @@ export default function App() {
             onBack={() => setView('dashboard')}
           />
         )}
-      </main>
+        </main>
+        <Footer className="pb-20 lg:pb-4" />
+      </div>
 
       <ConfirmModal
         open={!!confirmDelete}
