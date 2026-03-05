@@ -4,6 +4,7 @@ import { PunchLog, PunchType, VacationRange, HolidayRange } from '../types';
 import { isWeekend } from '../utils/weekend';
 import { formatDurationMs } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
+import { getMapsLink, getCurrentPositionAsync } from '../utils/geolocation';
 
 interface HistoryViewProps {
   userLogs: PunchLog[];
@@ -27,6 +28,9 @@ interface LogDraft {
   endTime?: string;
   justification: string;
   type: PunchType;
+  latitude: string;
+  longitude: string;
+  locationAddress: string;
 }
 
 type AbonedKind = 'vacation' | 'holiday';
@@ -132,6 +136,9 @@ const createLogDraft = (log: PunchLog): LogDraft => ({
     : '',
   justification: log.justification ?? '',
   type: log.type,
+  latitude: log.latitude != null ? String(log.latitude) : '',
+  longitude: log.longitude != null ? String(log.longitude) : '',
+  locationAddress: log.locationAddress ?? '',
 });
 
 const formatWeekday = (timestamp: number) =>
@@ -282,6 +289,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       return;
     }
 
+    const lat = logDraft.latitude.trim() ? parseFloat(logDraft.latitude) : NaN;
+    const lng = logDraft.longitude.trim() ? parseFloat(logDraft.longitude) : NaN;
+    const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
+    const locationUpdate =
+      hasValidCoords
+        ? {
+            latitude: lat,
+            longitude: lng,
+            locationAddress: logDraft.locationAddress.trim() || undefined,
+          }
+        : { latitude: undefined, longitude: undefined, locationAddress: undefined };
+
     if (logDraft.type === 'JUSTIFIED') {
       if (!logDraft.endTime) {
         setEditError('Informe o horário final.');
@@ -304,6 +323,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         dateString: logDraft.date,
         justification,
         justificationKind: editingLog.justificationKind ?? 'personal',
+        ...locationUpdate,
       });
     } else {
       onUpdateLog(editingLog.id, {
@@ -313,6 +333,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         dateString: logDraft.date,
         justification: undefined,
         justificationKind: undefined,
+        ...locationUpdate,
       });
     }
     closeEdit();
@@ -372,6 +393,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Dia</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Horário</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Local</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
@@ -400,6 +422,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         <span>{formatLogTime(log)}</span>
                         {durationMap[log.id] !== undefined && (
                           <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                        {log.latitude != null && log.longitude != null ? (
+                          <a
+                            href={getMapsLink(log.latitude, log.longitude)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 dark:text-indigo-400 hover:underline truncate max-w-[140px] inline-block"
+                            title="Ver no mapa"
+                          >
+                            {log.locationAddress ?? `${log.latitude.toFixed(5)}, ${log.longitude.toFixed(5)}`}
+                          </a>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-500">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -457,6 +494,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">
                       {rangeDays === 1 ? 'Dia abonado' : `${rangeDays} dias abonados`}
                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-300 dark:text-slate-500">—</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {canEditRange && (
@@ -524,6 +562,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
                       {typeInfo.label}
                     </span>
+                    {log.latitude != null && log.longitude != null && (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        <a
+                          href={getMapsLink(log.latitude, log.longitude)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                        >
+                          {log.locationAddress ?? `${log.latitude.toFixed(5)}, ${log.longitude.toFixed(5)}`} →
+                        </a>
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {canEdit?.(log) !== false && (
@@ -701,6 +751,54 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   </div>
                 </div>
               )}
+
+              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Local do registro</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Latitude</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={logDraft.latitude}
+                      onChange={(e) => updateDraft({ latitude: e.target.value })}
+                      placeholder="Ex: -23.5505"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Longitude</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={logDraft.longitude}
+                      onChange={(e) => updateDraft({ longitude: e.target.value })}
+                      placeholder="Ex: -46.6333"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Endereço (opcional)</label>
+                  <input
+                    type="text"
+                    value={logDraft.locationAddress}
+                    onChange={(e) => updateDraft({ locationAddress: e.target.value })}
+                    placeholder="Ex: Av. Paulista, 1000 - São Paulo"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const pos = await getCurrentPositionAsync({ timeout: 6000 });
+                    if (pos) updateDraft({ latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                  }}
+                  className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Usar minha localização atual
+                </button>
+              </div>
 
               {editError && (
                 <p className="text-sm text-rose-600 dark:text-rose-400 font-medium" role="alert">{editError}</p>

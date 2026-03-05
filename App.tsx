@@ -33,6 +33,7 @@ import {
   setFirebaseAuthPersistence,
 } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getCurrentPositionAsync } from './utils/geolocation';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
@@ -176,6 +177,7 @@ export default function App() {
   const [resetPasswordChecking, setResetPasswordChecking] = useState(false);
   const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
+  const [isPunching, setIsPunching] = useState(false);
   const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
   const [deleteUserPin, setDeleteUserPin] = useState('');
@@ -1009,13 +1011,26 @@ export default function App() {
     setRemoveByCpfMessage({ type: 'success', text: 'Cadastro removido. Você já pode se cadastrar novamente com este CPF.' });
   };
 
-  const handlePunch = () => {
-    if (!currentUser) return;
+  const handlePunch = async () => {
+    if (!currentUser || isPunching) return;
+    setIsPunching(true);
     const lastPunch = lastWorkLog;
     const type: PunchType = lastPunch?.type === 'IN' ? 'OUT' : 'IN';
     const now = Date.now();
     const todayString = toLocalDateInput(now);
     const hadPunchToday = userLogs.some(log => log.dateString === todayString && (log.type === 'IN' || log.type === 'OUT'));
+
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    try {
+      const position = await getCurrentPositionAsync({ timeout: 8000 });
+      if (position) {
+        latitude = position.latitude;
+        longitude = position.longitude;
+      }
+    } finally {
+      // segue mesmo sem localização
+    }
 
     const newLog: PunchLog = {
       id: crypto.randomUUID(),
@@ -1024,10 +1039,12 @@ export default function App() {
       type,
       dateString: todayString,
       updatedAt: now,
+      ...(latitude != null && longitude != null && { latitude, longitude }),
     };
 
     setLogs(prev => [newLog, ...prev]);
     void upsertLogDoc(newLog);
+    setIsPunching(false);
 
     if (type === 'IN' && !hadPunchToday && !currentUser.pendingJustification) {
       const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
@@ -1639,6 +1656,7 @@ export default function App() {
               summaries={summaries}
               bankOfHours={bankOfHours}
               isClockedIn={isClockedIn}
+              isPunching={isPunching}
               userVacations={userVacations}
               userHolidays={userHolidays}
               emailNotice={registerEmailNotice}

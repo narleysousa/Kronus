@@ -24,6 +24,8 @@ interface DashboardHomeProps {
   summaries: DaySummary[];
   bankOfHours: number;
   isClockedIn: boolean;
+  /** true enquanto obtém geolocalização ao bater ponto */
+  isPunching?: boolean;
   userVacations: VacationRange[];
   userHolidays: HolidayRange[];
   emailNotice?: { type: 'success' | 'error'; text: string } | null;
@@ -44,6 +46,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   summaries,
   bankOfHours,
   isClockedIn,
+  isPunching = false,
   emailNotice,
   onDismissEmailNotice,
   onPunch,
@@ -237,15 +240,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             <button
               type="button"
               onClick={onPunch}
-              className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-2 border-8 transition-all hover:scale-105 active:scale-95 shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 ${isClockedIn ? 'bg-red-500 border-red-400/50 hover:bg-red-600' : 'bg-emerald-500 border-emerald-400/50 hover:bg-emerald-600'}`}
-              aria-label={isClockedIn ? 'Registrar saída' : 'Registrar entrada'}
+              disabled={isPunching}
+              className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-2 border-8 transition-all hover:scale-105 active:scale-95 shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100 ${isClockedIn ? 'bg-red-500 border-red-400/50 hover:bg-red-600' : 'bg-emerald-500 border-emerald-400/50 hover:bg-emerald-600'}`}
+              aria-label={isPunching ? 'Obtendo localização...' : isClockedIn ? 'Registrar saída' : 'Registrar entrada'}
             >
               <Clock
                 size={40}
-                className={isClockedIn ? 'animate-spin [animation-duration:3s]' : 'animate-pulse'}
+                className={isClockedIn ? 'animate-spin [animation-duration:3s]' : isPunching ? 'animate-spin' : 'animate-pulse'}
                 aria-hidden
               />
-              <span className="font-black text-xl">{isClockedIn ? 'SAÍDA' : 'ENTRADA'}</span>
+              <span className="font-black text-xl">{isPunching ? '...' : isClockedIn ? 'SAÍDA' : 'ENTRADA'}</span>
             </button>
             {lastWorkLogType === 'OUT' && lastSessionDurationMs !== null && (
               <p className="text-indigo-100 dark:text-indigo-200 text-sm font-semibold mt-3">

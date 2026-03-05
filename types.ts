@@ -33,6 +33,12 @@ export interface PunchLog {
   dateString: string; // YYYY-MM-DD
   justification?: string;
   justificationKind?: 'personal' | 'missed';
+  /** Latitude quando o ponto foi batido (geolocalização). */
+  latitude?: number;
+  /** Longitude quando o ponto foi batido (geolocalização). */
+  longitude?: number;
+  /** Endereço legível (reverse geocoding), se disponível. */
+  locationAddress?: string;
   deletedAt?: number;
   updatedAt?: number;
 }

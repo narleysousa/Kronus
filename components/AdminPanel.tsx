@@ -6,6 +6,7 @@ import { cpfDigits, formatCpfDisplay } from '../utils/cpfMask';
 import { computeBankOfHours } from '../utils/bankOfHours';
 import { formatHoursToHms } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
+import { getCurrentPositionAsync, getMapsLink } from '../utils/geolocation';
 
 interface AdminPanelProps {
   currentUser: User | null;
@@ -40,6 +41,9 @@ interface LogDraft {
   time: string;
   endTime?: string;
   type: PunchType;
+  latitude: string;
+  longitude: string;
+  locationAddress: string;
 }
 
 const toLocalDateInput = (timestamp: number) => {
@@ -91,6 +95,9 @@ const createLogDraft = (log: PunchLog): LogDraft => ({
     ? toLocalTimeInput(log.endTimestamp ?? (log.timestamp + 60 * 60 * 1000))
     : '',
   type: log.type,
+  latitude: log.latitude != null ? String(log.latitude) : '',
+  longitude: log.longitude != null ? String(log.longitude) : '',
+  locationAddress: log.locationAddress ?? '',
 });
 
 const createDefaultLogDraft = (): LogDraft => {
@@ -100,6 +107,9 @@ const createDefaultLogDraft = (): LogDraft => {
     time: toLocalTimeInput(now),
     endTime: toLocalTimeInput(now + 60 * 60 * 1000),
     type: 'IN',
+    latitude: '',
+    longitude: '',
+    locationAddress: '',
   };
 };
 
@@ -224,10 +234,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }));
   };
 
+  const buildLocationUpdate = (draft: LogDraft) => {
+    const lat = draft.latitude.trim() ? parseFloat(draft.latitude) : NaN;
+    const lng = draft.longitude.trim() ? parseFloat(draft.longitude) : NaN;
+    const valid = !Number.isNaN(lat) && !Number.isNaN(lng);
+    return valid
+      ? { latitude: lat, longitude: lng, locationAddress: draft.locationAddress.trim() || undefined }
+      : { latitude: undefined, longitude: undefined, locationAddress: undefined };
+  };
+
   const saveLog = (logId: string) => {
     const draft = logDrafts[logId];
     if (!draft?.date || !draft?.time) return;
     const timestamp = new Date(`${draft.date}T${draft.time}`).getTime();
+    const locationUpdate = buildLocationUpdate(draft);
     if (draft.type === 'JUSTIFIED') {
       const existing = logs.find(log => log.id === logId);
       if (!draft.endTime) return;
@@ -239,6 +259,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         type: draft.type,
         dateString: draft.date,
         justificationKind: existing?.justificationKind ?? 'personal',
+        ...locationUpdate,
       });
     } else {
       onUpdateLog(logId, {
@@ -246,6 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         endTimestamp: undefined,
         type: draft.type,
         dateString: draft.date,
+        ...locationUpdate,
       });
     }
     setEditingLogId(null);
@@ -271,6 +293,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const draft = newLogDrafts[userId];
     if (!draft?.date || !draft?.time) return;
     const timestamp = new Date(`${draft.date}T${draft.time}`).getTime();
+    const loc = buildLocationUpdate(draft);
     if (draft.type === 'JUSTIFIED') {
       if (!draft.endTime) return;
       const endTimestamp = new Date(`${draft.date}T${draft.endTime}`).getTime();
@@ -283,6 +306,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         type: draft.type,
         dateString: draft.date,
         justificationKind: 'personal',
+        ...loc,
       });
     } else {
       onAddLog({
@@ -292,6 +316,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         endTimestamp: undefined,
         type: draft.type,
         dateString: draft.date,
+        ...loc,
       });
     }
     setNewLogDrafts(prev => ({
@@ -652,59 +677,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">Adicionar registro manual</p>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500 dark:text-slate-400">Data</label>
-                        <input
-                          type="date"
-                          value={newLogDraft.date}
-                          onChange={(e) => updateNewLogDraft(user.id, { date: e.target.value })}
-                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500 dark:text-slate-400">Hora</label>
-                        <input
-                          type="time"
-                          step="1"
-                          value={newLogDraft.time}
-                          onChange={(e) => updateNewLogDraft(user.id, { time: e.target.value })}
-                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                        />
-                      </div>
-                      {newLogDraft.type === 'JUSTIFIED' && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-end gap-3">
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-slate-500 dark:text-slate-400">Até</label>
+                          <label className="text-xs text-slate-500 dark:text-slate-400">Data</label>
                           <input
-                            type="time"
-                            step="1"
-                            value={newLogDraft.endTime || ''}
-                            onChange={(e) => updateNewLogDraft(user.id, { endTime: e.target.value })}
+                            type="date"
+                            value={newLogDraft.date}
+                            onChange={(e) => updateNewLogDraft(user.id, { date: e.target.value })}
                             className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                           />
                         </div>
-                      )}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
-                        <select
-                          value={newLogDraft.type}
-                          onChange={(e) => updateNewLogDraft(user.id, { type: e.target.value as PunchType })}
-                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-slate-500 dark:text-slate-400">Hora</label>
+                          <input
+                            type="time"
+                            step="1"
+                            value={newLogDraft.time}
+                            onChange={(e) => updateNewLogDraft(user.id, { time: e.target.value })}
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                          />
+                        </div>
+                        {newLogDraft.type === 'JUSTIFIED' && (
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-slate-500 dark:text-slate-400">Até</label>
+                            <input
+                              type="time"
+                              step="1"
+                              value={newLogDraft.endTime || ''}
+                              onChange={(e) => updateNewLogDraft(user.id, { endTime: e.target.value })}
+                              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                            />
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
+                          <select
+                            value={newLogDraft.type}
+                            onChange={(e) => updateNewLogDraft(user.id, { type: e.target.value as PunchType })}
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                          >
+                            <option value="IN">Entrada</option>
+                            <option value="OUT">Saída</option>
+                            <option value="JUSTIFIED">Liberação</option>
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addLog(user.id)}
+                          disabled={!newLogDraft.date || !newLogDraft.time || (newLogDraft.type === 'JUSTIFIED' && !newLogDraft.endTime)}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <option value="IN">Entrada</option>
-                          <option value="OUT">Saída</option>
-                          <option value="JUSTIFIED">Liberação</option>
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addLog(user.id)}
-                        disabled={!newLogDraft.date || !newLogDraft.time || (newLogDraft.type === 'JUSTIFIED' && !newLogDraft.endTime)}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
                         <Plus size={16} aria-hidden />
                         Adicionar
                       </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Local:</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="Lat"
+                          value={newLogDraft.latitude}
+                          onChange={(e) => updateNewLogDraft(user.id, { latitude: e.target.value })}
+                          className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                        />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="Long"
+                          value={newLogDraft.longitude}
+                          onChange={(e) => updateNewLogDraft(user.id, { longitude: e.target.value })}
+                          className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Endereço (opcional)"
+                          value={newLogDraft.locationAddress}
+                          onChange={(e) => updateNewLogDraft(user.id, { locationAddress: e.target.value })}
+                          className="flex-1 min-w-[120px] px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const pos = await getCurrentPositionAsync({ timeout: 6000 });
+                            if (pos) updateNewLogDraft(user.id, { latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                          }}
+                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                        >
+                          Minha localização
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -722,83 +785,138 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <div key={log.id} className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 text-sm">
                           {isEditingLog ? (
-                            <div className="flex flex-wrap items-center gap-3">
-                              <input
-                                type="date"
-                                value={draftLog.date}
-                                onChange={(e) => updateLogDraft(log.id, { date: e.target.value })}
-                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                              />
-                              <input
-                                type="time"
-                                step="1"
-                                value={draftLog.time}
-                                onChange={(e) => updateLogDraft(log.id, { time: e.target.value })}
-                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                              />
-                              {draftLog.type === 'JUSTIFIED' && (
+                            <div className="space-y-3">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <input
+                                  type="date"
+                                  value={draftLog.date}
+                                  onChange={(e) => updateLogDraft(log.id, { date: e.target.value })}
+                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                />
                                 <input
                                   type="time"
                                   step="1"
-                                  value={draftLog.endTime || ''}
-                                  onChange={(e) => updateLogDraft(log.id, { endTime: e.target.value })}
+                                  value={draftLog.time}
+                                  onChange={(e) => updateLogDraft(log.id, { time: e.target.value })}
                                   className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                                 />
-                              )}
-                              <select
-                                value={draftLog.type}
-                                onChange={(e) => updateLogDraft(log.id, { type: e.target.value as PunchType })}
-                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                              >
-                                <option value="IN">Entrada</option>
-                                <option value="OUT">Saída</option>
-                                <option value="JUSTIFIED">Liberação</option>
-                              </select>
-                              <div className="flex items-center gap-2">
+                                {draftLog.type === 'JUSTIFIED' && (
+                                  <input
+                                    type="time"
+                                    step="1"
+                                    value={draftLog.endTime || ''}
+                                    onChange={(e) => updateLogDraft(log.id, { endTime: e.target.value })}
+                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                  />
+                                )}
+                                <select
+                                  value={draftLog.type}
+                                  onChange={(e) => updateLogDraft(log.id, { type: e.target.value as PunchType })}
+                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                >
+                                  <option value="IN">Entrada</option>
+                                  <option value="OUT">Saída</option>
+                                  <option value="JUSTIFIED">Liberação</option>
+                                </select>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => saveLog(log.id)}
+                                    disabled={!canSaveLog}
+                                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Salvar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingLogId(null)}
+                                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-lg text-xs font-bold"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-full sm:w-auto">Local:</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Lat"
+                                  value={draftLog.latitude}
+                                  onChange={(e) => updateLogDraft(log.id, { latitude: e.target.value })}
+                                  className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Long"
+                                  value={draftLog.longitude}
+                                  onChange={(e) => updateLogDraft(log.id, { longitude: e.target.value })}
+                                  className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Endereço (opcional)"
+                                  value={draftLog.locationAddress}
+                                  onChange={(e) => updateLogDraft(log.id, { locationAddress: e.target.value })}
+                                  className="flex-1 min-w-[120px] px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
+                                />
                                 <button
                                   type="button"
-                                  onClick={() => saveLog(log.id)}
-                                  disabled={!canSaveLog}
-                                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={async () => {
+                                    const pos = await getCurrentPositionAsync({ timeout: 6000 });
+                                    if (pos) updateLogDraft(log.id, { latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                                  }}
+                                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
                                 >
-                                  Salvar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingLogId(null)}
-                                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-lg text-xs font-bold"
-                                >
-                                  Cancelar
+                                  Minha localização
                                 </button>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-between gap-4 flex-wrap">
-                              <div className="flex items-center gap-4 flex-wrap">
-                                <span className="font-bold text-slate-800 dark:text-slate-100">{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
-                                <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded-full ${typeInfo.badgeClass}`}>
-                                  {typeInfo.label}
-                                </span>
-                                <span className="text-slate-500 dark:text-slate-400">{logTimeLabel}</span>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center justify-between gap-4 flex-wrap">
+                                <div className="flex items-center gap-4 flex-wrap">
+                                  <span className="font-bold text-slate-800 dark:text-slate-100">{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
+                                  <span className={`font-bold uppercase text-[10px] px-2 py-0.5 rounded-full ${typeInfo.badgeClass}`}>
+                                    {typeInfo.label}
+                                  </span>
+                                  <span className="text-slate-500 dark:text-slate-400">{logTimeLabel}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditLog(log)}
+                                    className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 p-2 rounded-lg transition-colors shrink-0"
+                                    aria-label="Editar registro"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onConfirmDeleteLog(log.id, log)}
+                                    className="text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-lg transition-colors shrink-0"
+                                    aria-label="Excluir registro"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => startEditLog(log)}
-                                  className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 p-2 rounded-lg transition-colors shrink-0"
-                                  aria-label="Editar registro"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onConfirmDeleteLog(log.id, log)}
-                                  className="text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 p-2 rounded-lg transition-colors shrink-0"
-                                  aria-label="Excluir registro"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                              {log.latitude != null && log.longitude != null ? (
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  Local:{' '}
+                                  <a
+                                    href={getMapsLink(log.latitude, log.longitude)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                                  >
+                                    {log.locationAddress ?? `${log.latitude.toFixed(5)}, ${log.longitude.toFixed(5)}`} →
+                                  </a>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-slate-400 dark:text-slate-500">Local: —</p>
+                              )}
                             </div>
                           )}
                         </div>
