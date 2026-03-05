@@ -809,7 +809,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                     setLocationError('');
                     setLocationLoading(true);
                     try {
-                      const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                      const pos = await getCurrentPositionAsync({ timeout: 20000 });
                       if (pos) {
                         setLogDraft(prev =>
                           prev ? { ...prev, latitude: String(pos.latitude), longitude: String(pos.longitude) } : prev

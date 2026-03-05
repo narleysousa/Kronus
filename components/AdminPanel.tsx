@@ -776,7 +776,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             const userId = user.id;
                             setLocationLoadingKey(`new:${userId}`);
                             try {
-                              const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                              const pos = await getCurrentPositionAsync({ timeout: 20000 });
                               if (pos) {
                                 const lat = String(pos.latitude);
                                 const lng = String(pos.longitude);
@@ -905,7 +905,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     const logId = log.id;
                                     setLocationLoadingKey(`log:${logId}`);
                                     try {
-                                      const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                                      const pos = await getCurrentPositionAsync({ timeout: 20000 });
                                       if (pos) {
                                         setLogDrafts(prev => {
                                           const d = prev[logId];

@@ -1037,7 +1037,7 @@ export default function App() {
     let initialLat: number | undefined;
     let initialLng: number | undefined;
     try {
-      const position = await getCurrentPositionAsync({ timeout: 8000 });
+      const position = await getCurrentPositionAsync({ timeout: 20000 });
       if (position) {
         initialLat = position.latitude;
         initialLng = position.longitude;

@@ -1,7 +1,7 @@
 /**
  * Obtém a posição atual do usuário (geolocalização).
  * Retorna null se o usuário negar, der timeout ou não houver suporte.
- * Usa enableHighAccuracy: false para resposta mais rápida (rede/célula).
+ * Prioriza precisão: GPS quando disponível, cache baixo e timeout maior para fix.
  */
 export function getCurrentPositionAsync(options?: {
   timeout?: number;
@@ -11,9 +11,11 @@ export function getCurrentPositionAsync(options?: {
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
     return Promise.resolve(null);
   }
-  const timeout = options?.timeout ?? 12000;
-  const maximumAge = options?.maximumAge ?? 60_000; // cache de 1 minuto
-  const enableHighAccuracy = options?.enableHighAccuracy ?? false; // false = mais rápido e estável
+  const enableHighAccuracy = options?.enableHighAccuracy ?? true; // true = GPS para maior precisão
+  // Com high accuracy o GPS pode demorar; timeout maior para obter fix preciso
+  const timeout = options?.timeout ?? (enableHighAccuracy ? 20000 : 12000);
+  // maximumAge baixo = posição fresca (evita cache antigo e melhora precisão)
+  const maximumAge = options?.maximumAge ?? (enableHighAccuracy ? 0 : 60_000);
 
   return new Promise((resolve) => {
     let settled = false;
@@ -23,7 +25,7 @@ export function getCurrentPositionAsync(options?: {
       resolve(result);
     };
 
-    const id = setTimeout(() => done(null), timeout + 500); // limite extra para não travar
+    const id = setTimeout(() => done(null), timeout + 1000); // margem para não cortar o fix
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
