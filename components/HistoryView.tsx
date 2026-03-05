@@ -682,8 +682,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       </div>
       {editingLog && logDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="edit-log-title">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-start gap-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start gap-4 p-6 pb-0 shrink-0">
               <div className="p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
                 <Edit2 size={24} aria-hidden />
               </div>
@@ -698,7 +698,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </button>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 px-6 pb-6 overflow-y-auto flex-1 min-h-0 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Data</label>
@@ -833,24 +833,24 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               {editError && (
                 <p className="text-sm text-rose-600 dark:text-rose-400 font-medium" role="alert">{editError}</p>
               )}
+            </div>
 
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={closeEdit}
-                  className="px-4 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEdit}
-                  className="px-4 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors flex items-center gap-2"
-                >
-                  <Save size={18} aria-hidden />
-                  Salvar alterações
-                </button>
-              </div>
+            <div className="px-6 py-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700 shrink-0">
+              <button
+                type="button"
+                onClick={closeEdit}
+                className="px-4 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="px-4 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors flex items-center gap-2"
+              >
+                <Save size={18} aria-hidden />
+                Salvar alterações
+              </button>
             </div>
           </div>
         </div>
