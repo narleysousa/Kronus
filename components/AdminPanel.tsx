@@ -154,6 +154,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [userDrafts, setUserDrafts] = useState<Record<string, UserDraft>>({});
   const [logDrafts, setLogDrafts] = useState<Record<string, LogDraft>>({});
   const [newLogDrafts, setNewLogDrafts] = useState<Record<string, LogDraft>>({});
+  const [locationLoadingKey, setLocationLoadingKey] = useState<string | null>(null); // 'log:'+id ou 'new:'+userId
   const [pinVisible, setPinVisible] = useState(false); // padrão: sempre ocultar
   const [removeCpfRaw, setRemoveCpfRaw] = useState('');
 
@@ -759,13 +760,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         />
                         <button
                           type="button"
+                          disabled={locationLoadingKey === `new:${user.id}`}
                           onClick={async () => {
-                            const pos = await getCurrentPositionAsync({ timeout: 6000 });
-                            if (pos) updateNewLogDraft(user.id, { latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                            const userId = user.id;
+                            setLocationLoadingKey(`new:${userId}`);
+                            try {
+                              const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                              if (pos) {
+                                const lat = String(pos.latitude);
+                                const lng = String(pos.longitude);
+                                setNewLogDrafts(prev => {
+                                  const current = prev[userId];
+                                  if (!current) return prev;
+                                  return { ...prev, [userId]: { ...current, latitude: lat, longitude: lng } };
+                                });
+                              }
+                            } finally {
+                              setLocationLoadingKey(null);
+                            }
                           }}
-                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                          className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:cursor-wait"
                         >
-                          Minha localização
+                          {locationLoadingKey === `new:${user.id}` ? 'Obtendo...' : 'Minha localização'}
                         </button>
                       </div>
                     </div>
@@ -863,13 +879,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 />
                                 <button
                                   type="button"
+                                  disabled={locationLoadingKey === `log:${log.id}`}
                                   onClick={async () => {
-                                    const pos = await getCurrentPositionAsync({ timeout: 6000 });
-                                    if (pos) updateLogDraft(log.id, { latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                                    const logId = log.id;
+                                    setLocationLoadingKey(`log:${logId}`);
+                                    try {
+                                      const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                                      if (pos) {
+                                        setLogDrafts(prev => {
+                                          const d = prev[logId];
+                                          if (!d) return prev;
+                                          return { ...prev, [logId]: { ...d, latitude: String(pos.latitude), longitude: String(pos.longitude) } };
+                                        });
+                                      }
+                                    } finally {
+                                      setLocationLoadingKey(null);
+                                    }
                                   }}
-                                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:cursor-wait"
                                 >
-                                  Minha localização
+                                  {locationLoadingKey === `log:${log.id}` ? 'Obtendo...' : 'Minha localização'}
                                 </button>
                               </div>
                             </div>

@@ -220,6 +220,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const [editingLog, setEditingLog] = useState<PunchLog | null>(null);
   const [logDraft, setLogDraft] = useState<LogDraft | null>(null);
   const [editError, setEditError] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   const [editingRange, setEditingRange] = useState<{
     kind: AbonedKind;
@@ -242,12 +244,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     setEditingLog(log);
     setLogDraft(createLogDraft(log));
     setEditError('');
+    setLocationError('');
   };
 
   const closeEdit = () => {
     setEditingLog(null);
     setLogDraft(null);
     setEditError('');
+    setLocationLoading(false);
+    setLocationError('');
   };
 
   const openRangeEdit = (kind: AbonedKind, range: VacationRange | HolidayRange) => {
@@ -437,6 +442,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                           </a>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-500">—</span>
+                        )}
+                        {canEdit?.(log) !== false && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(log)}
+                            className="ml-2 text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-medium"
+                            title="Editar registro (data, horário e local)"
+                          >
+                            Editar
+                          </button>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -684,7 +699,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <div className="flex-1 min-w-0">
                 <h3 id="edit-log-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">Editar registro</h3>
                 <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
-                  Ajuste a data, horário e tipo do registro selecionado.
+                  Ajuste a data, horário, tipo e local do registro selecionado.
                 </p>
               </div>
               <button type="button" onClick={closeEdit} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors shrink-0" aria-label="Fechar">
@@ -790,14 +805,30 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </div>
                 <button
                   type="button"
+                  disabled={locationLoading}
                   onClick={async () => {
-                    const pos = await getCurrentPositionAsync({ timeout: 6000 });
-                    if (pos) updateDraft({ latitude: String(pos.latitude), longitude: String(pos.longitude) });
+                    setLocationError('');
+                    setLocationLoading(true);
+                    try {
+                      const pos = await getCurrentPositionAsync({ timeout: 10000 });
+                      if (pos) {
+                        setLogDraft(prev =>
+                          prev ? { ...prev, latitude: String(pos.latitude), longitude: String(pos.longitude) } : prev
+                        );
+                      } else {
+                        setLocationError('Não foi possível obter a localização. Verifique se o acesso foi permitido nas configurações do navegador.');
+                      }
+                    } finally {
+                      setLocationLoading(false);
+                    }
                   }}
-                  className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:cursor-wait"
                 >
-                  Usar minha localização atual
+                  {locationLoading ? 'Obtendo localização...' : 'Usar minha localização atual'}
                 </button>
+                {locationError && (
+                  <p className="text-sm text-rose-600 dark:text-rose-400 mt-1" role="alert">{locationError}</p>
+                )}
               </div>
 
               {editError && (
