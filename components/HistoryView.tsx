@@ -5,6 +5,7 @@ import { isWeekend } from '../utils/weekend';
 import { formatDurationMs } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
 import { getMapsLink, getCurrentPositionAsync } from '../utils/geolocation';
+import { LocationMapPicker } from './LocationMapPicker';
 
 interface HistoryViewProps {
   userLogs: PunchLog[];
@@ -443,16 +444,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         ) : (
                           <span className="text-slate-300 dark:text-slate-500">—</span>
                         )}
-                        {canEdit?.(log) !== false && (
-                          <button
-                            type="button"
-                            onClick={() => openEdit(log)}
-                            className="ml-2 text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-medium"
-                            title="Editar registro (data, horário e local)"
-                          >
-                            Editar
-                          </button>
-                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -769,6 +760,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
               <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Local do registro</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local. O endereço será preenchido automaticamente.</p>
+                <LocationMapPicker
+                  initialLat={logDraft.latitude ? parseFloat(logDraft.latitude) : null}
+                  initialLng={logDraft.longitude ? parseFloat(logDraft.longitude) : null}
+                  initialAddress={logDraft.locationAddress || ''}
+                  height={220}
+                  onSelect={(lat, lng, address) => updateDraft({ latitude: String(lat), longitude: String(lng), locationAddress: address })}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs text-slate-500 dark:text-slate-400">Latitude</label>

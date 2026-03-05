@@ -34,6 +34,7 @@ import {
 } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getCurrentPositionAsync } from './utils/geolocation';
+import { LocationMapPicker } from './components/LocationMapPicker';
 
 import { LoginView } from './components/LoginView';
 import { RegisterView } from './components/RegisterView';
@@ -178,6 +179,19 @@ export default function App() {
   const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; log?: PunchLog } | null>(null);
   const [isPunching, setIsPunching] = useState(false);
+  const [punchLocationModalOpen, setPunchLocationModalOpen] = useState(false);
+  const [punchLocationPayload, setPunchLocationPayload] = useState<{
+    type: PunchType;
+    todayString: string;
+    hadPunchToday: boolean;
+    initialLat?: number;
+    initialLng?: number;
+  } | null>(null);
+  const [punchLocationSelected, setPunchLocationSelected] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
   const confirmDeleteIdRef = useRef<string | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ userId: string; userName: string } | null>(null);
   const [deleteUserPin, setDeleteUserPin] = useState('');
@@ -1020,17 +1034,29 @@ export default function App() {
     const todayString = toLocalDateInput(now);
     const hadPunchToday = userLogs.some(log => log.dateString === todayString && (log.type === 'IN' || log.type === 'OUT'));
 
-    let latitude: number | undefined;
-    let longitude: number | undefined;
+    let initialLat: number | undefined;
+    let initialLng: number | undefined;
     try {
       const position = await getCurrentPositionAsync({ timeout: 8000 });
       if (position) {
-        latitude = position.latitude;
-        longitude = position.longitude;
+        initialLat = position.latitude;
+        initialLng = position.longitude;
       }
     } finally {
-      // segue mesmo sem localização
+      // abre modal mesmo sem localização (usuário escolhe no mapa)
     }
+
+    setPunchLocationPayload({ type, todayString, hadPunchToday, initialLat, initialLng });
+    setPunchLocationSelected(null);
+    setPunchLocationModalOpen(true);
+    setIsPunching(false);
+  };
+
+  const confirmPunchLocation = () => {
+    if (!currentUser || !punchLocationPayload) return;
+    const now = Date.now();
+    const { type, todayString, hadPunchToday } = punchLocationPayload;
+    const loc = punchLocationSelected;
 
     const newLog: PunchLog = {
       id: crypto.randomUUID(),
@@ -1039,12 +1065,14 @@ export default function App() {
       type,
       dateString: todayString,
       updatedAt: now,
-      ...(latitude != null && longitude != null && { latitude, longitude }),
+      ...(loc && { latitude: loc.lat, longitude: loc.lng, locationAddress: loc.address }),
     };
 
     setLogs(prev => [newLog, ...prev]);
     void upsertLogDoc(newLog);
-    setIsPunching(false);
+    setPunchLocationModalOpen(false);
+    setPunchLocationPayload(null);
+    setPunchLocationSelected(null);
 
     if (type === 'IN' && !hadPunchToday && !currentUser.pendingJustification) {
       const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
@@ -1729,6 +1757,49 @@ export default function App() {
         </main>
         <Footer className="pb-20 lg:pb-4" />
       </div>
+
+      {punchLocationModalOpen && punchLocationPayload && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60" role="dialog" aria-modal="true" aria-labelledby="punch-map-title">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 id="punch-map-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                {punchLocationPayload.type === 'IN' ? 'Registrar entrada' : 'Registrar saída'}
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Clique no mapa para marcar o local do ponto. O endereço será preenchido automaticamente.
+              </p>
+            </div>
+            <div className="p-4 flex-1 min-h-0">
+              <LocationMapPicker
+                initialLat={punchLocationPayload.initialLat}
+                initialLng={punchLocationPayload.initialLng}
+                height={280}
+                onSelect={(lat, lng, address) => setPunchLocationSelected({ lat, lng, address })}
+              />
+            </div>
+            <div className="p-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setPunchLocationModalOpen(false);
+                  setPunchLocationPayload(null);
+                  setPunchLocationSelected(null);
+                }}
+                className="px-4 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmPunchLocation}
+                className="px-4 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+              >
+                Confirmar ponto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={!!confirmDelete}

@@ -7,6 +7,7 @@ import { computeBankOfHours } from '../utils/bankOfHours';
 import { formatHoursToHms } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
 import { getCurrentPositionAsync, getMapsLink } from '../utils/geolocation';
+import { LocationMapPicker } from './LocationMapPicker';
 
 interface AdminPanelProps {
   currentUser: User | null;
@@ -733,8 +734,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         Adicionar
                       </button>
                       </div>
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local:</p>
+                        <LocationMapPicker
+                          initialLat={newLogDraft.latitude ? parseFloat(newLogDraft.latitude) : null}
+                          initialLng={newLogDraft.longitude ? parseFloat(newLogDraft.longitude) : null}
+                          initialAddress={newLogDraft.locationAddress || ''}
+                          height={200}
+                          onSelect={(lat, lng, address) => updateNewLogDraft(user.id, { latitude: String(lat), longitude: String(lng), locationAddress: address })}
+                        />
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Local:</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Local (lat/long/endereço):</span>
                         <input
                           type="text"
                           inputMode="decimal"
@@ -852,8 +863,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </button>
                                 </div>
                               </div>
+                              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local:</p>
+                                <LocationMapPicker
+                                  initialLat={draftLog.latitude ? parseFloat(draftLog.latitude) : null}
+                                  initialLng={draftLog.longitude ? parseFloat(draftLog.longitude) : null}
+                                  initialAddress={draftLog.locationAddress || ''}
+                                  height={200}
+                                  onSelect={(lat, lng, address) => updateLogDraft(log.id, { latitude: String(lat), longitude: String(lng), locationAddress: address })}
+                                />
+                              </div>
                               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-full sm:w-auto">Local:</span>
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-full sm:w-auto">Local (lat/long/endereço):</span>
                                 <input
                                   type="text"
                                   inputMode="decimal"
