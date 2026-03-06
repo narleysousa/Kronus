@@ -6,7 +6,7 @@ import { cpfDigits, formatCpfDisplay } from '../utils/cpfMask';
 import { computeBankOfHours } from '../utils/bankOfHours';
 import { formatHoursToHms } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
-import { getCurrentPositionAsync, getMapsLink } from '../utils/geolocation';
+import { getCurrentPositionAsync, getMapsLink, parseCoord } from '../utils/geolocation';
 import { LocationMapPicker } from './LocationMapPicker';
 
 interface AdminPanelProps {
@@ -170,10 +170,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const updateUserDraft = (userId: string, updates: Partial<UserDraft>) => {
-    setUserDrafts(prev => ({
-      ...prev,
-      [userId]: { ...prev[userId], ...updates },
-    }));
+    setUserDrafts(prev => {
+      const existing = prev[userId];
+      if (!existing) return prev;
+      return { ...prev, [userId]: { ...existing, ...updates } };
+    });
   };
 
   const toggleWorkDay = (userId: string, dayId: string) => {
@@ -221,25 +222,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const updateLogDraft = (logId: string, updates: Partial<LogDraft>) => {
-    setLogDrafts(prev => ({
-      ...prev,
-      [logId]: (() => {
-        const draft = { ...prev[logId], ...updates };
-        if (updates.type === 'JUSTIFIED' && !draft.endTime) {
-          draft.endTime = buildEndTime(draft.date, draft.time);
-        }
-        if (updates.type && updates.type !== 'JUSTIFIED') {
-          draft.endTime = '';
-        }
-        return draft;
-      })(),
-    }));
+    setLogDrafts(prev => {
+      const existing = prev[logId];
+      if (!existing) return prev;
+      const draft = { ...existing, ...updates };
+      if (updates.type === 'JUSTIFIED' && !draft.endTime) {
+        draft.endTime = buildEndTime(draft.date, draft.time);
+      }
+      if (updates.type && updates.type !== 'JUSTIFIED') {
+        draft.endTime = '';
+      }
+      return { ...prev, [logId]: draft };
+    });
   };
 
   const buildLocationUpdate = (draft: LogDraft) => {
-    const lat = draft.latitude.trim() ? parseFloat(draft.latitude) : NaN;
-    const lng = draft.longitude.trim() ? parseFloat(draft.longitude) : NaN;
-    const valid = !Number.isNaN(lat) && !Number.isNaN(lng);
+    const lat = parseCoord(draft.latitude);
+    const lng = parseCoord(draft.longitude);
+    const valid = lat != null && lng != null;
     return valid
       ? { latitude: lat, longitude: lng, locationAddress: draft.locationAddress.trim() || undefined }
       : { latitude: undefined, longitude: undefined, locationAddress: undefined };
@@ -399,7 +399,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-indigo-100 dark:shadow-indigo-900/30" aria-hidden>
-                    {user.name.charAt(0)}
+                    {(user.name ?? '').charAt(0).toUpperCase() || '?'}
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2 flex-wrap">
@@ -737,8 +737,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="space-y-2">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local:</p>
                         <LocationMapPicker
-                          initialLat={newLogDraft.latitude ? parseFloat(newLogDraft.latitude) : null}
-                          initialLng={newLogDraft.longitude ? parseFloat(newLogDraft.longitude) : null}
+                          initialLat={parseCoord(newLogDraft.latitude)}
+                          initialLng={parseCoord(newLogDraft.longitude)}
                           initialAddress={newLogDraft.locationAddress || ''}
                           height={200}
                           onSelect={(lat, lng, address) => updateNewLogDraft(user.id, { latitude: String(lat), longitude: String(lng), locationAddress: address })}
@@ -866,8 +866,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
                                 <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local:</p>
                                 <LocationMapPicker
-                                  initialLat={draftLog.latitude ? parseFloat(draftLog.latitude) : null}
-                                  initialLng={draftLog.longitude ? parseFloat(draftLog.longitude) : null}
+                                  initialLat={parseCoord(draftLog.latitude)}
+                                  initialLng={parseCoord(draftLog.longitude)}
                                   initialAddress={draftLog.locationAddress || ''}
                                   height={200}
                                   onSelect={(lat, lng, address) => updateLogDraft(log.id, { latitude: String(lat), longitude: String(lng), locationAddress: address })}

@@ -57,6 +57,7 @@ export const LocationMapPicker: React.FC<LocationMapPickerProps> = ({
   const [address, setAddress] = useState(initialAddress || '');
   const [loading, setLoading] = useState(false);
   const fetchedInitialRef = useRef(false);
+  const prevInitialRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const fetchAddress = useCallback(async (lat: number, lng: number) => {
     setLoading(true);
@@ -73,6 +74,17 @@ export const LocationMapPicker: React.FC<LocationMapPickerProps> = ({
       setLoading(false);
     }
   }, [onSelect]);
+
+  useEffect(() => {
+    if (!hasInitial) return;
+    const prev = prevInitialRef.current;
+    const same = prev && prev.lat === initialLat && prev.lng === initialLng;
+    prevInitialRef.current = { lat: initialLat!, lng: initialLng! };
+    if (!same) {
+      fetchedInitialRef.current = false;
+      setPosition([initialLat!, initialLng!]);
+    }
+  }, [hasInitial, initialLat, initialLng]);
 
   useEffect(() => {
     if (hasInitial && !position) setPosition([initialLat!, initialLng!]);

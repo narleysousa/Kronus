@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentUser, view, onNavigate,
         aria-label="Abrir meu perfil"
       >
         <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0" aria-hidden>
-          {currentUser?.name.charAt(0)}
+          {(currentUser?.name ?? '').charAt(0).toUpperCase() || '?'}
         </div>
         <div className="flex flex-col overflow-hidden min-w-0">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{currentUser?.name}</span>

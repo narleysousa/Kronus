@@ -91,8 +91,15 @@ const normalizeUsers = (users: User[]): User[] => users.map(user => {
 const normalizeLogs = (logs: PunchLog[]): PunchLog[] => logs.map(log => {
   const baseUpdatedAt = log.updatedAt ?? log.timestamp ?? Date.now();
   const deletedAt = log.deletedAt ?? 0;
+  const lat = log.latitude;
+  const lng = log.longitude;
+  const validCoords = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng);
+  const location = validCoords
+    ? { latitude: lat, longitude: lng, locationAddress: log.locationAddress }
+    : { latitude: undefined, longitude: undefined, locationAddress: undefined };
   return {
     ...log,
+    ...location,
     updatedAt: deletedAt > baseUpdatedAt ? deletedAt : baseUpdatedAt,
   };
 });

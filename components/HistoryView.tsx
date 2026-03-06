@@ -4,7 +4,7 @@ import { PunchLog, PunchType, VacationRange, HolidayRange } from '../types';
 import { isWeekend } from '../utils/weekend';
 import { formatDurationMs } from '../utils/formatDuration';
 import { exportHoursToSpreadsheet } from '../utils/exportHours';
-import { getMapsLink, getCurrentPositionAsync } from '../utils/geolocation';
+import { getMapsLink, getCurrentPositionAsync, parseCoord } from '../utils/geolocation';
 import { LocationMapPicker } from './LocationMapPicker';
 
 interface HistoryViewProps {
@@ -295,14 +295,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       return;
     }
 
-    const lat = logDraft.latitude.trim() ? parseFloat(logDraft.latitude) : NaN;
-    const lng = logDraft.longitude.trim() ? parseFloat(logDraft.longitude) : NaN;
-    const hasValidCoords = !Number.isNaN(lat) && !Number.isNaN(lng);
+    const lat = parseCoord(logDraft.latitude);
+    const lng = parseCoord(logDraft.longitude);
+    const hasValidCoords = lat != null && lng != null;
     const locationUpdate =
       hasValidCoords
         ? {
-            latitude: lat,
-            longitude: lng,
+            latitude: lat!,
+            longitude: lng!,
             locationAddress: logDraft.locationAddress.trim() || undefined,
           }
         : { latitude: undefined, longitude: undefined, locationAddress: undefined };
@@ -762,8 +762,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Local do registro</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Clique no mapa para marcar o local. O endereço será preenchido automaticamente.</p>
                 <LocationMapPicker
-                  initialLat={logDraft.latitude ? parseFloat(logDraft.latitude) : null}
-                  initialLng={logDraft.longitude ? parseFloat(logDraft.longitude) : null}
+                  initialLat={parseCoord(logDraft.latitude)}
+                  initialLng={parseCoord(logDraft.longitude)}
                   initialAddress={logDraft.locationAddress || ''}
                   height={220}
                   onSelect={(lat, lng, address) => updateDraft({ latitude: String(lat), longitude: String(lng), locationAddress: address })}

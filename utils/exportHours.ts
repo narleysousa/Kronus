@@ -86,11 +86,12 @@ export interface ExportOptions {
  */
 export function buildHoursCsv(logs: PunchLog[], options: ExportOptions = {}): string {
   const { userName, includeUserColumn = false, vacations = [], holidays = [] } = options;
-  const durationMap = buildDurationMap(logs);
+  const activeLogs = logs.filter(log => !log.deletedAt);
+  const durationMap = buildDurationMap(activeLogs);
   const headers = ['Data', ...(userName || includeUserColumn ? ['Usuário'] : []), 'Tipo', 'Horário início', 'Horário fim', 'Duração'];
   const userCell = userName ?? '';
 
-  const logRows = logs.map(log => ({
+  const logRows = activeLogs.map(log => ({
     sortTimestamp: log.timestamp,
     row: [
       formatDate(log.timestamp),

@@ -29,7 +29,8 @@ export function computeBankOfHours(
   userVacations: VacationRange[],
   userHolidays: HolidayRange[] = []
 ): number {
-  const grouped = userLogs.reduce((acc, log) => {
+  const activeLogs = userLogs.filter(log => !log.deletedAt);
+  const grouped = activeLogs.reduce((acc, log) => {
     if (!acc[log.dateString]) acc[log.dateString] = [];
     acc[log.dateString].push(log);
     return acc;

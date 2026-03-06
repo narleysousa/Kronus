@@ -650,10 +650,11 @@ export default function App() {
 
   const handleLogin = async () => {
     const normalizedEmail = normalizeEmail(loginEmail);
+    const pinDigits = pin.replace(/\D/g, '').slice(0, 4);
     const localUser = safeUsers.find(u => u.email.trim().toLowerCase() === normalizedEmail);
-    const localPinMatches = !!localUser && localUser.pin === pin;
+    const localPinMatches = !!localUser && localUser.pin === pinDigits;
 
-    const password = buildAuthPassword(pin);
+    const password = buildAuthPassword(pinDigits);
     let firebaseUser;
     try {
       await setFirebaseAuthPersistence(rememberLogin);
@@ -764,6 +765,10 @@ export default function App() {
     }
     const formData = new FormData(e.currentTarget);
     const cpfRaw = (formData.get('cpf') as string)?.replace(/\D/g, '') || '';
+    if (cpfRaw.length !== 11) {
+      setRegisterFormError('CPF deve ter 11 dígitos.');
+      return;
+    }
     if (safeUsers.some(u => cpfDigits(u.cpf) === cpfRaw)) {
       setRegisterError('CPF já cadastrado.');
       return;
@@ -785,6 +790,18 @@ export default function App() {
       return;
     }
 
+    const dailyHoursRaw = Number(formData.get('dailyHours'));
+    if (!Number.isFinite(dailyHoursRaw) || dailyHoursRaw < 0.5 || dailyHoursRaw > 24) {
+      setRegisterFormError('Informe uma carga horária diária válida (entre 0,5 e 24 horas).');
+      return;
+    }
+
+    const positionRaw = (formData.get('position') as string)?.trim() ?? '';
+    if (!positionRaw) {
+      setRegisterFormError('Informe o cargo/função.');
+      return;
+    }
+
     const email = normalizeEmail(String(formData.get('email') ?? ''));
     const isMasterAdminFinal = isMasterAdmin || isMasterEmail(email);
     if (safeUsers.some(u => u.email.trim().toLowerCase() === email)) {
@@ -802,8 +819,8 @@ export default function App() {
       emailVerified: false,
       pendingJustification: '',
       relaxNotice: false,
-      position: formData.get('position') as string,
-      dailyHours: Number(formData.get('dailyHours')),
+      position: positionRaw,
+      dailyHours: dailyHoursRaw,
       workDays,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -1075,7 +1092,8 @@ export default function App() {
     setPunchLocationSelected(null);
 
     if (type === 'IN' && !hadPunchToday && !currentUser.pendingJustification) {
-      const missingDate = findMissingWorkday(currentUser, userLogs, userVacations, userHolidays, now);
+      const logsIncludingNew = [newLog, ...userLogs];
+      const missingDate = findMissingWorkday(currentUser, logsIncludingNew, userVacations, userHolidays, now);
       if (missingDate) {
         setUsers(prev => prev.map(u => (
           u.id === currentUser.id ? { ...u, pendingJustification: missingDate, updatedAt: Date.now() } : u
@@ -1266,25 +1284,20 @@ export default function App() {
 
   const deleteLog = (id: string, log?: PunchLog) => {
     const target = log ?? logsRef.current.find(item => item.id === id);
-    if (target) {
-      if (!canManageLogsForUser(currentUser, target.userId)) {
-        confirmDeleteIdRef.current = null;
-        setConfirmDelete(null);
-        return;
-      }
-    } else if (!isMasterAdmin(currentUser)) {
+    if (!target) {
+      confirmDeleteIdRef.current = null;
+      setConfirmDelete(null);
+      return;
+    }
+    if (!canManageLogsForUser(currentUser, target.userId)) {
       confirmDeleteIdRef.current = null;
       setConfirmDelete(null);
       return;
     }
     const deletedAt = Date.now();
-    const updatedLog = target
-      ? { ...target, deletedAt, updatedAt: deletedAt }
-      : { id, userId: '', timestamp: deletedAt, type: 'JUSTIFIED' as PunchType, dateString: toLocalDateInput(deletedAt), deletedAt, updatedAt: deletedAt };
-    if (target) {
-      setLogs(prev => prev.map(l => (l.id === id ? updatedLog : l)));
-      void upsertLogDoc(updatedLog);
-    }
+    const updatedLog: PunchLog = { ...target, deletedAt, updatedAt: deletedAt };
+    setLogs(prev => prev.map(l => (l.id === id ? updatedLog : l)));
+    void upsertLogDoc(updatedLog);
     confirmDeleteIdRef.current = null;
     setConfirmDelete(null);
   };
@@ -1670,7 +1683,7 @@ export default function App() {
             className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-xs hover:opacity-90 transition-opacity"
             aria-label="Abrir meu perfil"
           >
-            {currentUser?.name.charAt(0)}
+            {(currentUser?.name ?? '').charAt(0).toUpperCase() || '?'}
           </button>
         </div>
 

@@ -44,6 +44,13 @@ export function getCurrentPositionAsync(options?: {
   });
 }
 
+/** Converte string em número; retorna null se inválido (evita NaN no mapa). */
+export function parseCoord(value: string | undefined | null): number | null {
+  if (value == null || String(value).trim() === '') return null;
+  const n = parseFloat(String(value).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Gera link do Google Maps para abrir a localização. */
 export function getMapsLink(latitude: number, longitude: number): string {
   return `https://www.google.com/maps?q=${latitude},${longitude}`;

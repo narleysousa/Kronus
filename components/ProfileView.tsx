@@ -53,7 +53,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     onUpdateUser(currentUser.id, {
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      cpf: formatCpfDisplay(cpf).replace(/\D/g, ''),
+      cpf: formatCpfDisplay(cpf),
       pin: pinDigits,
       position: position.trim(),
       dailyHours: dailyHoursNum,
