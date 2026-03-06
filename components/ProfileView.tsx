@@ -71,7 +71,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -79,16 +79,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Voltar"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={20} />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Meu perfil</h2>
-            <p className="text-slate-500 dark:text-slate-400">Edite seus dados pessoais e de trabalho.</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Meu perfil</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">Edite seus dados pessoais e de trabalho.</p>
           </div>
         </div>
       </header>
 
-      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden p-6 md:p-8">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden p-4 sm:p-6 md:p-8">
         <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase tracking-wider mb-6">
           Editar dados do colaborador
         </h3>

@@ -124,18 +124,18 @@ export const LocationMapPicker: React.FC<LocationMapPickerProps> = ({
       </div>
       <div className="px-3 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
         {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Buscando endereço...</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Buscando endereço...</p>
         ) : address ? (
           <>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200" title={address}>
+            <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 line-clamp-2 break-words" title={address}>
               {address}
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-0.5">
               Se a rua estiver incorreta, clique no mapa para reposicionar o pin.
             </p>
           </>
         ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Clique no mapa para escolher o local do ponto.</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Clique no mapa para escolher o local do ponto.</p>
         )}
       </div>
     </div>

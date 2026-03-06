@@ -373,19 +373,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Histórico Detalhado</h2>
-          <p className="text-slate-500 dark:text-slate-400">Acompanhe entradas, saídas, liberações e dias abonados.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Histórico Detalhado</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">Acompanhe entradas, saídas, liberações e dias abonados.</p>
         </div>
         <button
           type="button"
           onClick={handleExport}
           disabled={!hasExportData}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
-          <FileSpreadsheet size={18} aria-hidden />
-          Exportar para planilha
+          <FileSpreadsheet size={16} className="sm:hidden" aria-hidden />
+          <FileSpreadsheet size={18} className="hidden sm:block" aria-hidden />
+          <span className="hidden sm:inline">Exportar para planilha</span>
+          <span className="sm:hidden">Exportar</span>
         </button>
       </header>
 
@@ -551,18 +553,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               const isWeekendDay = isWeekend(dateString);
               const weekdayLabel = formatWeekday(log.timestamp);
               return (
-                <div key={item.key} className="p-4 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                <div key={item.key} className="p-3 sm:p-4 flex items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex flex-wrap items-center gap-x-1">
                       <span>{new Date(log.timestamp).toLocaleDateString('pt-BR')}</span>
-                      <span className="mx-1">·</span>
+                      <span>·</span>
                       <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
                         {weekdayLabel}
                       </span>
-                      <span className="mx-1">·</span>
+                      <span>·</span>
                       <span>{formatLogTime(log, false)}</span>
                       {durationMap[log.id] !== undefined && (
-                        <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">+{formatDurationMs(durationMap[log.id])}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-xs">+{formatDurationMs(durationMap[log.id])}</span>
                       )}
                     </p>
                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
@@ -616,19 +618,19 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             const canDeleteRange = rangeKind === 'vacation' ? !!onDeleteVacationRange : !!onDeleteHolidayRange;
 
             return (
-              <div key={item.key} className="p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              <div key={item.key} className="p-3 sm:p-4 flex items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex flex-wrap items-center gap-x-1">
                     <span>
                       {isSingleDay
                         ? formatDateString(range.startDate)
                         : `${formatDateString(range.startDate)} → ${formatDateString(range.endDate)}`}
                     </span>
-                    <span className="mx-1">·</span>
+                    <span>·</span>
                     <span className={isWeekendDay ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}>
                       {isSingleDay ? formatWeekdayFromDateString(range.startDate) : 'Período'}
                     </span>
-                    <span className="mx-1">·</span>
+                    <span>·</span>
                     <span>{rangeDays === 1 ? 'Dia abonado' : `${rangeDays} dias abonados`}</span>
                   </p>
                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1 ${typeInfo.badgeClass}`}>
@@ -683,13 +685,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {editingLog && logDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="edit-log-title">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-start gap-4 p-6 pb-0 shrink-0">
-              <div className="p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                <Edit2 size={24} aria-hidden />
+            <div className="flex items-start gap-3 sm:gap-4 p-4 sm:p-6 pb-0 shrink-0">
+              <div className="p-2.5 sm:p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                <Edit2 size={20} className="sm:hidden" aria-hidden />
+                <Edit2 size={24} className="hidden sm:block" aria-hidden />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 id="edit-log-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">Editar registro</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
+                <h3 id="edit-log-title" className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">Editar registro</h3>
+                <p className="mt-1 sm:mt-2 text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
                   Ajuste a data, horário, tipo e local do registro selecionado.
                 </p>
               </div>
@@ -698,7 +701,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </button>
             </div>
 
-            <div className="mt-6 px-6 pb-6 overflow-y-auto flex-1 min-h-0 space-y-4">
+            <div className="mt-4 sm:mt-6 px-4 sm:px-6 pb-4 sm:pb-6 overflow-y-auto flex-1 min-h-0 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Data</label>
@@ -765,7 +768,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   initialLat={parseCoord(logDraft.latitude)}
                   initialLng={parseCoord(logDraft.longitude)}
                   initialAddress={logDraft.locationAddress || ''}
-                  height={220}
+                  height={180}
                   onSelect={(lat, lng, address) => updateDraft({ latitude: String(lat), longitude: String(lng), locationAddress: address })}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -835,7 +838,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               )}
             </div>
 
-            <div className="px-6 py-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700 shrink-0">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700 shrink-0">
               <button
                 type="button"
                 onClick={closeEdit}
@@ -858,14 +861,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
       {editingRange && rangeDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="edit-range-title">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                <Edit2 size={24} aria-hidden />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-4 sm:p-6 animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="p-2.5 sm:p-3 rounded-full shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                <Edit2 size={20} aria-hidden />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 id="edit-range-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">Editar período abonado</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
+                <h3 id="edit-range-title" className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">Editar período abonado</h3>
+                <p className="mt-1 sm:mt-2 text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
                   Ajuste as datas de início e fim para atualizar o período.
                 </p>
               </div>
@@ -874,7 +877,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </button>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-4 sm:mt-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Data inicial</label>

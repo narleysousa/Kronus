@@ -142,59 +142,63 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         )}
       </div>
     )}
-    <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
       <div>
-        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">
           Olá, {currentUser?.name.split(' ')[0]} 👋
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm sm:text-base">
           Hoje é {new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onOpenPersonalCommitment}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-sm font-bold transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-xs sm:text-sm font-bold transition-colors"
         >
-          <Calendar size={18} aria-hidden />
-          Compromissos pessoais
+          <Calendar size={16} className="sm:hidden" aria-hidden />
+          <Calendar size={18} className="hidden sm:block" aria-hidden />
+          <span className="hidden sm:inline">Compromissos pessoais</span>
+          <span className="sm:hidden">Compromissos</span>
         </button>
         <button
           type="button"
           onClick={onOpenHoliday}
-          className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border ${
+          className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors border ${
             isTodayHoliday
               ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-600 ring-2 ring-amber-400 dark:ring-amber-500'
               : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800'
           }`}
         >
-          <Calendar size={18} aria-hidden />
+          <Calendar size={16} className="sm:hidden" aria-hidden />
+          <Calendar size={18} className="hidden sm:block" aria-hidden />
           Feriados
         </button>
         <button
           type="button"
           onClick={onOpenVacation}
-          className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border ${
+          className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors border ${
             isTodayVacation
               ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-600 ring-2 ring-emerald-400 dark:ring-emerald-500'
               : 'bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800'
           }`}
         >
-          <Calendar size={18} aria-hidden />
+          <Calendar size={16} className="sm:hidden" aria-hidden />
+          <Calendar size={18} className="hidden sm:block" aria-hidden />
           Férias
         </button>
       </div>
     </header>
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 bg-indigo-600 dark:bg-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/30">
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+      <div className="lg:col-span-2 bg-indigo-600 dark:bg-indigo-700 rounded-3xl p-5 sm:p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/30">
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
           <div className="text-center md:text-left">
             <div className="inline-flex items-center gap-2 bg-indigo-500/30 dark:bg-indigo-900/40 px-3 py-1 rounded-full text-indigo-100 dark:text-indigo-200 text-xs font-bold uppercase tracking-wider mb-4 border border-indigo-400/30 dark:border-indigo-500/40">
               Status Atual
             </div>
-            <h3 className="text-4xl font-bold mb-2">
+            <h3 className="text-2xl sm:text-4xl font-bold mb-2">
               {isTodayVacation
                 ? 'Dia de férias'
                 : isTodayHoliday
@@ -203,7 +207,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                     ? 'Você está trabalhando'
                     : 'Ponto não batido'}
             </h3>
-            <p className="text-indigo-100 dark:text-indigo-200 text-lg opacity-90">
+            <p className="text-indigo-100 dark:text-indigo-200 text-sm sm:text-lg opacity-90">
               {isTodayVacation
                 ? 'Hoje não conta para meta nem banco de horas.'
                 : isTodayHoliday
@@ -213,18 +217,18 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                     : 'Bata o ponto para iniciar sua jornada de hoje.'}
             </p>
             {!isTodayVacation && !isTodayHoliday && isClockedIn && countdownRemainingMs !== null && overtimeMs === null && countdownRemainingMs > 0 && (
-              <p className="mt-3 text-red-400 font-bold text-xl tabular-nums" aria-live="polite">
+              <p className="mt-3 text-red-400 font-bold text-base sm:text-xl tabular-nums" aria-live="polite">
                 Faltam {formatDurationMs(countdownRemainingMs)} para a meta
               </p>
             )}
             {!isTodayVacation && !isTodayHoliday && isClockedIn && overtimeMs !== null && (
-              <p className="mt-3 text-emerald-300 font-bold text-xl tabular-nums" aria-live="polite">
+              <p className="mt-3 text-emerald-300 font-bold text-base sm:text-xl tabular-nums" aria-live="polite">
                 {isWeekendOvertime ? 'Horas extras (1,5x):' : 'Horas extras:'} +{formatDurationMs(overtimeMs)}
               </p>
             )}
             {!isTodayVacation && !isTodayHoliday && !isClockedIn && isTodayWorkDay && !hasPunchedInToday && (
               punchInCountdownMs !== null ? (
-                <p className="mt-3 text-amber-200 font-bold text-xl tabular-nums" aria-live="polite">
+                <p className="mt-3 text-amber-200 font-bold text-base sm:text-xl tabular-nums" aria-live="polite">
                   Faltam {formatDurationMs(punchInCountdownMs)} para bater o ponto (prazo: {PUNCH_DEADLINE_HOUR}h)
                 </p>
               ) : punchDeadlinePassed ? (
@@ -241,15 +245,15 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               type="button"
               onClick={onPunch}
               disabled={isPunching}
-              className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-2 border-8 transition-all hover:scale-105 active:scale-95 shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100 ${isClockedIn ? 'bg-red-500 border-red-400/50 hover:bg-red-600' : 'bg-emerald-500 border-emerald-400/50 hover:bg-emerald-600'}`}
+              className={`w-28 h-28 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 border-[6px] sm:border-8 transition-all hover:scale-105 active:scale-95 shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 disabled:opacity-70 disabled:cursor-wait disabled:hover:scale-100 ${isClockedIn ? 'bg-red-500 border-red-400/50 hover:bg-red-600' : 'bg-emerald-500 border-emerald-400/50 hover:bg-emerald-600'}`}
               aria-label={isPunching ? 'Obtendo localização...' : isClockedIn ? 'Registrar saída' : 'Registrar entrada'}
             >
               <Clock
-                size={40}
-                className={isClockedIn ? 'animate-spin [animation-duration:3s]' : isPunching ? 'animate-spin' : 'animate-pulse'}
+                size={28}
+                className={`sm:!w-10 sm:!h-10 ${isClockedIn ? 'animate-spin [animation-duration:3s]' : isPunching ? 'animate-spin' : 'animate-pulse'}`}
                 aria-hidden
               />
-              <span className="font-black text-xl">{isPunching ? '...' : isClockedIn ? 'SAÍDA' : 'ENTRADA'}</span>
+              <span className="font-black text-base sm:text-xl">{isPunching ? '...' : isClockedIn ? 'SAÍDA' : 'ENTRADA'}</span>
             </button>
             {lastWorkLogType === 'OUT' && lastSessionDurationMs !== null && (
               <p className="text-indigo-100 dark:text-indigo-200 text-sm font-semibold mt-3">
@@ -263,9 +267,9 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <div className="absolute bottom-4 left-4 w-40 h-40 bg-indigo-400/20 rounded-full blur-xl" aria-hidden />
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 sm:p-8 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h4 className="font-bold text-slate-800 dark:text-slate-100">Banco de Horas</h4>
             <button
               type="button"
@@ -277,7 +281,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </button>
           </div>
           <div className="space-y-1">
-            <span className={`text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <span className={`text-3xl sm:text-5xl font-black ${bankOfHours >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {bankOfHours >= 0 ? '+' : ''}{formatHoursToHms(bankOfHours)}
             </span>
             <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">Acúmulo total no período</p>
@@ -292,7 +296,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       </div>
     </div>
 
-    <section className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 shadow-sm" aria-labelledby="resumo-title">
+    <section className="bg-white dark:bg-slate-800 rounded-3xl p-5 sm:p-8 border border-slate-100 dark:border-slate-700 shadow-sm" aria-labelledby="resumo-title">
       <div className="flex items-center justify-between mb-6">
         <h4 id="resumo-title" className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <History size={20} className="text-indigo-600 dark:text-indigo-400" aria-hidden />
@@ -304,7 +308,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       </div>
       <div className="space-y-4">
         {summaries.slice(0, 5).map(s => (
-          <div key={s.date} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-600">
+          <div key={s.date} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-600 gap-2">
             <div>
               <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}

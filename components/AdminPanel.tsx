@@ -341,7 +341,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </header>
 
       {(currentUser?.isMaster || currentUser?.role === UserRole.ADMIN) && onRequestDeleteByCpf && (
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Remover usuário por CPF</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Informe o CPF e confirme a exclusão com seu PIN de administrador.</p>
           <div className="flex flex-wrap items-end gap-3">
@@ -395,7 +395,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const canEditOwnPin = currentUser?.id === user.id;
 
           return (
-            <article key={user.id} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-indigo-100 dark:hover:border-indigo-800 transition-all">
+            <article key={user.id} className="bg-white dark:bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-indigo-100 dark:hover:border-indigo-800 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-indigo-100 dark:shadow-indigo-900/30" aria-hidden>
@@ -423,7 +423,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -435,7 +435,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     }}
                     disabled={!canEditUser}
                     title={!canEditUser ? 'Somente administrador master pode editar este usuário.' : undefined}
-                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl text-sm font-bold border border-indigo-100 dark:border-indigo-800 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="px-3 sm:px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs sm:text-sm font-bold border border-indigo-100 dark:border-indigo-800 transition-all flex items-center gap-1.5 sm:gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Edit2 size={16} aria-hidden />
                     {isEditingUser ? 'Fechar Edição' : 'Editar Usuário'}
@@ -452,10 +452,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           setEditingLogId(null);
                         }
                       }}
-                      className="px-4 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-2"
+                      className="px-3 sm:px-4 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs sm:text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-1.5 sm:gap-2"
                     >
                       <Edit2 size={16} aria-hidden />
-                      {editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}
+                      <span className="hidden sm:inline">{editingUserLogs === user.id ? 'Fechar Horas' : 'Ver/Editar Horas'}</span>
+                      <span className="sm:hidden">{editingUserLogs === user.id ? 'Fechar' : 'Horas'}</span>
                     </button>
                   )}
                   {canManageLogsOf(currentUser, user) && (
@@ -468,11 +469,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         holidays: userHolidays,
                       })}
                       disabled={!hasExportData}
-                      className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold border border-emerald-100 dark:border-emerald-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 sm:px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs sm:text-sm font-bold border border-emerald-100 dark:border-emerald-800 transition-all flex items-center gap-1.5 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Exportar registros deste usuário para planilha (CSV)"
                     >
                       <FileSpreadsheet size={16} aria-hidden />
-                      Exportar planilha
+                      <span className="hidden sm:inline">Exportar planilha</span>
+                      <span className="sm:hidden">Exportar</span>
                     </button>
                   )}
                   {/* Somente Master pode promover usuário comum a Master */}
@@ -480,33 +482,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onPromoteToMaster(user.id)}
-                      className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-400 rounded-xl text-sm font-bold border border-amber-100 dark:border-amber-800 transition-all flex items-center gap-2"
+                      className="px-3 sm:px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-400 rounded-xl text-xs sm:text-sm font-bold border border-amber-100 dark:border-amber-800 transition-all flex items-center gap-1.5 sm:gap-2"
                       title="Conceder acesso total (Master)"
                     >
                       <ShieldCheck size={16} aria-hidden />
-                      Tornar Master
+                      <span className="hidden sm:inline">Tornar Master</span>
+                      <span className="sm:hidden">Master</span>
                     </button>
                   )}
                   {currentUser?.isMaster && onDemoteToUser && user.id !== currentUser.id && isUserAdmin && (
                     <button
                       type="button"
                       onClick={() => onDemoteToUser(user.id)}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-2"
+                      className="px-3 sm:px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs sm:text-sm font-bold border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-1.5 sm:gap-2"
                       title="Rebaixar a usuário comum"
                     >
                       <Users size={16} aria-hidden />
-                      Rebaixar a usuário
+                      <span className="hidden sm:inline">Rebaixar a usuário</span>
+                      <span className="sm:hidden">Rebaixar</span>
                     </button>
                   )}
                   {(currentUser?.isMaster || currentUser?.role === UserRole.ADMIN) && user.id !== currentUser.id && (
                     <button
                       type="button"
                       onClick={() => onRequestDeleteUser(user)}
-                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-xl text-sm font-bold border border-rose-100 dark:border-rose-800 transition-all flex items-center gap-2"
+                      className="px-3 sm:px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-xl text-xs sm:text-sm font-bold border border-rose-100 dark:border-rose-800 transition-all flex items-center gap-1.5 sm:gap-2"
                       aria-label={`Excluir usuário ${user.name}`}
                     >
                       <Trash2 size={16} aria-hidden />
-                      Excluir usuário
+                      <span className="hidden sm:inline">Excluir usuário</span>
+                      <span className="sm:hidden">Excluir</span>
                     </button>
                   )}
                 </div>
@@ -677,17 +682,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-3 sm:p-4">
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-3">Adicionar registro manual</p>
                     <div className="space-y-3">
-                      <div className="flex flex-wrap items-end gap-3">
+                      <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-2 sm:gap-3">
                         <div className="flex flex-col gap-1">
                           <label className="text-xs text-slate-500 dark:text-slate-400">Data</label>
                           <input
                             type="date"
                             value={newLogDraft.date}
                             onChange={(e) => updateNewLogDraft(user.id, { date: e.target.value })}
-                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                            className="w-full px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
@@ -697,7 +702,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             step="1"
                             value={newLogDraft.time}
                             onChange={(e) => updateNewLogDraft(user.id, { time: e.target.value })}
-                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                            className="w-full px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                           />
                         </div>
                         {newLogDraft.type === 'JUSTIFIED' && (
@@ -708,7 +713,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               step="1"
                               value={newLogDraft.endTime || ''}
                               onChange={(e) => updateNewLogDraft(user.id, { endTime: e.target.value })}
-                              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                              className="w-full px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                             />
                           </div>
                         )}
@@ -717,7 +722,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <select
                             value={newLogDraft.type}
                             onChange={(e) => updateNewLogDraft(user.id, { type: e.target.value as PunchType })}
-                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                            className="w-full px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                           >
                             <option value="IN">Entrada</option>
                             <option value="OUT">Saída</option>
@@ -813,19 +818,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <div key={log.id} className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 text-sm">
                           {isEditingLog ? (
                             <div className="space-y-3">
-                              <div className="flex flex-wrap items-center gap-3">
+                              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
                                 <input
                                   type="date"
                                   value={draftLog.date}
                                   onChange={(e) => updateLogDraft(log.id, { date: e.target.value })}
-                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                  className="w-full sm:w-auto px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                                 />
                                 <input
                                   type="time"
                                   step="1"
                                   value={draftLog.time}
                                   onChange={(e) => updateLogDraft(log.id, { time: e.target.value })}
-                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                  className="w-full sm:w-auto px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                                 />
                                 {draftLog.type === 'JUSTIFIED' && (
                                   <input
@@ -833,19 +838,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     step="1"
                                     value={draftLog.endTime || ''}
                                     onChange={(e) => updateLogDraft(log.id, { endTime: e.target.value })}
-                                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                    className="w-full sm:w-auto px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                                   />
                                 )}
                                 <select
                                   value={draftLog.type}
                                   onChange={(e) => updateLogDraft(log.id, { type: e.target.value as PunchType })}
-                                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                  className="w-full sm:w-auto px-2 sm:px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm"
                                 >
                                   <option value="IN">Entrada</option>
                                   <option value="OUT">Saída</option>
                                   <option value="JUSTIFIED">Liberação</option>
                                 </select>
-                                <div className="flex items-center gap-2">
+                                <div className="col-span-2 flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => saveLog(log.id)}

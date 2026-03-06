@@ -48,7 +48,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ compact = false, dropd
         </button>
         {open && (
           <div
-            className={`absolute left-0 py-2 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg min-w-[140px] ${
+            className={`absolute right-0 sm:left-0 sm:right-auto py-2 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg min-w-[140px] z-[60] ${
               dropdownPosition === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'
             }`}
             role="menu"

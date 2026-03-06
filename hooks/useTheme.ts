@@ -5,9 +5,17 @@ export type EffectiveTheme = 'light' | 'dark';
 
 const STORAGE_KEY = 'kronus_theme';
 
+function getLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function getStoredPreference(): ThemePreference {
-  if (typeof window === 'undefined') return 'system';
-  const stored = window.localStorage.getItem(STORAGE_KEY);
+  const stored = getLocalStorage()?.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
   return 'system';
 }
@@ -56,7 +64,7 @@ export function useTheme() {
 
   const setTheme = useCallback((value: ThemePreference) => {
     setPreferenceState(value);
-    window.localStorage.setItem(STORAGE_KEY, value);
+    getLocalStorage()?.setItem(STORAGE_KEY, value);
   }, []);
 
   return { theme: preference, setTheme, effectiveTheme: effective };

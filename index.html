@@ -19,7 +19,15 @@
   </head>
   <body>
     <script>
-      (function(){var t=localStorage.getItem('kronus_theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var dark=(t==='dark')||(t!=='light'&&d);document.documentElement.classList.toggle('dark',!!dark);})();
+      (function(){
+        try {
+          var storage = window.localStorage;
+          var t = storage ? storage.getItem('kronus_theme') : null;
+          var d = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = (t === 'dark') || (t !== 'light' && d);
+          document.documentElement.classList.toggle('dark', !!dark);
+        } catch (_) {}
+      })();
     </script>
     <div id="deploy-warning" style="display:none;position:fixed;inset:0;z-index:9999;background:#1e293b;color:#f8fafc;font-family:Inter,sans-serif;padding:2rem;overflow:auto;">
       <div style="max-width:520px;margin:0 auto;padding:2rem 0;">

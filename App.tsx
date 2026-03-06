@@ -1774,23 +1774,23 @@ export default function App() {
       {punchLocationModalOpen && punchLocationPayload && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 dark:bg-black/60" role="dialog" aria-modal="true" aria-labelledby="punch-map-title">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-              <h2 id="punch-map-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-700 shrink-0">
+              <h2 id="punch-map-title" className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
                 {punchLocationPayload.type === 'IN' ? 'Registrar entrada' : 'Registrar saída'}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Clique no mapa para marcar o local do ponto. O endereço será preenchido automaticamente.
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Clique no mapa para marcar o local do ponto.
               </p>
             </div>
-            <div className="p-4 flex-1 min-h-0">
+            <div className="p-3 sm:p-4 flex-1 min-h-0 overflow-y-auto">
               <LocationMapPicker
                 initialLat={punchLocationPayload.initialLat}
                 initialLng={punchLocationPayload.initialLng}
-                height={280}
+                height={240}
                 onSelect={(lat, lng, address) => setPunchLocationSelected({ lat, lng, address })}
               />
             </div>
-            <div className="p-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700">
+            <div className="p-3 sm:p-4 flex gap-3 justify-end border-t border-slate-100 dark:border-slate-700 shrink-0">
               <button
                 type="button"
                 onClick={() => {
